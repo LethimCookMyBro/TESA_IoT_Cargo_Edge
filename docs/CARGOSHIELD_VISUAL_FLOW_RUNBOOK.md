@@ -31,7 +31,9 @@ Demo pacing is `--interval` on the service (default `1.0` s per window, ten wind
 1. Press `Ctrl+Shift+P`.
 2. Run **Open Bitstream Studio (Sensor Studio tab)** (`bitstream-studio.openBitstreamSensorStudio`).
 3. Use [the build sheet](../visual-flow/CARGOSHIELD_SENSOR_STUDIO_FLOW_BUILD.md) to add only verified nodes.
-4. Configure MQTT nodes through the Inspector: host `127.0.0.1`, TCP port `1883` where the node supports TCP, or the extension's documented MQTT-over-WebSocket profile `ws://127.0.0.1:8883/mqtt` when the Studio node requires WebSocket.
+4. Configure MQTT nodes through the Inspector: host `127.0.0.1`, TCP port `1883` where the node supports TCP, or `ws://127.0.0.1:8883/mqtt` when the Studio node requires WebSocket.
+
+   Both transports are verified against this broker: `1883` (TCP) and `8883` (WebSocket) are served by the same broker process, and a WebSocket subscriber receives the retained state immediately on connect at path `/mqtt` **and** at `/`. The check is `websocket_transport` in `reports/demo_e2e_evidence.json`, re-runnable with `scripts/demo_e2e_check.py --ws-port 8883`. Port `9001` is closed; do not use it.
 5. Export the graph from Sensor Studio after it is visibly wired. Do not write or edit a flow JSON by hand.
 
 ## Click-by-click build steps

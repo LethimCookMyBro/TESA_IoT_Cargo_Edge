@@ -83,11 +83,32 @@ def retained_snapshot(host: str, port: int, topic: str, client_id: str) -> dict 
         observer.close()
 
 
+def websocket_state_probe(host: str, ws_port: int, topic: str, path: str) -> dict:
+    """Sensor Studio nodes may only speak MQTT over WebSocket; prove that transport reaches the same state."""
+    received, box = threading.Event(), {}
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"cargoshield-ws-probe{path.replace('/', '-')}", transport="websockets")
+    client.ws_set_options(path=path)
+    client.on_connect = lambda c, *_args, **_kw: c.subscribe(topic)
+    client.on_message = lambda _c, _u, message: (box.update({"status": json.loads(message.payload)["status"], "retain": message.retain}), received.set())
+    try:
+        client.connect(host, ws_port, keepalive=10)
+        client.loop_start()
+        return {"path": path, "connected": True, "retained_state_received": received.wait(8), **box}
+    except Exception as exc:
+        return {"path": path, "connected": False, "error": f"{type(exc).__name__}: {exc}"}
+    finally:
+        try:
+            client.loop_stop(); client.disconnect()
+        except Exception:
+            pass
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="End-to-end CargoShield demo verification")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=1883)
     parser.add_argument("--device-id", default="cargo-e2e")
+    parser.add_argument("--ws-port", type=int, default=8883, help="broker's MQTT-over-WebSocket port, used by Sensor Studio nodes")
     args = parser.parse_args()
 
     service = CargoMqttService(ROOT, device_id=args.device_id)
@@ -218,7 +239,11 @@ def main() -> None:
                                         "every_malformed_command_answered": errors == 5,
                                         "retained_state_is_not_an_error": retained_after is not None and "error" not in retained_after and "source_diagnostic" not in retained_after}
 
+        # 7. The transport a Sensor Studio node will actually use.
+        evidence["websocket_transport"] = [websocket_state_probe(args.host, args.ws_port, service.state_topic, path) for path in ("/mqtt", "/")]
+
         checks = {"late_subscriber_retained_state": evidence["late_subscriber_retained_state"]["received"],
+                  "websocket_transport_reaches_state": any(probe.get("retained_state_received") for probe in evidence["websocket_transport"]),
                   "all_controls_accepted": all(result["accepted"] for result in control_results),
                   "demo_shows_move_and_hold": evidence["demo_run"]["observed_move"] and evidence["demo_run"]["observed_hold_uncertain"],
                   "demo_completed": evidence["demo_run"]["completed"],
