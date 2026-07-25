@@ -1,4 +1,6 @@
-# CargoShield Edge
+# CargoShield Edge (TESA IoT Cargo Edge)
+
+Payload-aware service robot prototype using Edge AI, IMU-based surface detection, collision safety, and TESAIoT digital twin integration over MQTT.
 
 Local Python engine for cargo-aware surface classification, safety policy, route selection, and Bitstream Sensor Studio integration over MQTT.
 
@@ -33,3 +35,4 @@ Verify the whole path against a running broker:
 See `docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md` for the Sensor Studio flow and `reports/demo_e2e_evidence.json` for the recorded end-to-end result.
 
 Live BMI270 inference remains disabled until its calibration and 128-sample window are verified.
+
