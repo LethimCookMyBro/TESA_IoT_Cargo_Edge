@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CargoShield operator console</title>
+<style>
+  :root { color-scheme: light dark; --gap: 12px; }
+  body { margin: 0; padding: 20px; font: 14px/1.5 system-ui, sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { opacity: .7; margin: 0 0 16px; }
+  .grid { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  fieldset { border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 8px; padding: 12px; }
+  legend { padding: 0 6px; font-weight: 600; }
+  button, select, input { font: inherit; padding: 6px 10px; border-radius: 6px; }
+  button { cursor: pointer; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; }
+  dt { opacity: .7; }
+  dd { margin: 0; font-variant-numeric: tabular-nums; }
+  #status { font-weight: 700; }
+  .go { color: #17803d; } .hold { color: #b45309; } .stop { color: #b91c1c; } .idle { opacity: .7; }
+  #link { font-size: 12px; opacity: .8; }
+  progress { width: 100%; }
+</style>
+</head>
+<body>
+<h1>CargoShield operator console</h1>
+<p class="sub">Local control surface for <code>cargo.mqtt_service</code>. The Python engine stays authoritative for inference, policy and safe stops; this page only sends the documented commands and renders published state.</p>
+<p id="link">connecting…</p>
+
+<div class="grid">
+  <fieldset>
+    <legend>Mission</legend>
+    <div class="row">
+      <button data-cmd="start">Start</button>
+      <button data-cmd="pause">Pause</button>
+      <button data-cmd="manual_resume">Resume / Clear Safe Stop</button>
+      <button data-cmd="reset">Reset</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Cargo</legend>
+    <div class="row">
+      <label>Type <select id="cargo"></select></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Route</legend>
+    <div class="row">
+      <label>Pickup <select id="pickup"></select></label>
+      <label>Destination <select id="destination"></select></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Obstacle (simulated)</legend>
+    <div class="row">
+      <input id="obstacle" type="range" min="0" max="200" step="5" value="200">
+      <output id="obstacle-value">200</output>
+      <button id="obstacle-send">Set</button>
+      <button data-cmd="clear_obstacle">Clear</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Mission state</legend>
+    <dl>
+      <dt>Status</dt><dd id="status">—</dd>
+      <dt>Cargo</dt><dd id="v-cargo_type">—</dd>
+      <dt>Zone</dt><dd id="v-zone">—</dd>
+      <dt>Obstacle</dt><dd id="v-obstacle_distance">—</dd>
+      <dt>Progress</dt><dd><progress id="v-progress" max="1" value="0"></progress></dd>
+    </dl>
+  </fieldset>
+
+  <fieldset>
+    <legend>Surface AI</legend>
+    <dl>
+      <dt>Class</dt><dd id="v-label">—</dd>
+      <dt>Confidence</dt><dd id="v-confidence">—</dd>
+      <dt>Vibration risk</dt><dd id="v-risk">—</dd>
+    </dl>
+  </fieldset>
+
+  <fieldset>
+    <legend>Safety decision</legend>
+    <dl>
+      <dt>Action</dt><dd id="v-action">—</dd>
+      <dt>Speed ratio</dt><dd id="v-speed_ratio">—</dd>
+      <dt>Reason</dt><dd id="v-reason">—</dd>
+    </dl>
+  </fieldset>
+
+  <fieldset>
+    <legend>Route / risk</legend>
+    <dl>
+      <dt>Nodes</dt><dd id="v-route_nodes">—</dd>
+      <dt>Policy</dt><dd id="v-route_reason">—</dd>
+    </dl>
+  </fieldset>
+</div>
+
+<script type="module">
+import { LiveDataClient, DEFAULT_MQTT_WS_URL } from './live-data.browser.js';
+import { COMMANDS, CARGO_TYPES, ZONES, DISPLAY_PATHS, read, topics, statusTone } from './controls.js';
+
+const params = new URLSearchParams(location.search);
+const deviceId = params.get('device') ?? 'cargo-robot-01';
+const url = params.get('url') ?? DEFAULT_MQTT_WS_URL;   // ws://127.0.0.1:8883
+const topic = topics(deviceId);
+const $ = (id) => document.getElementById(id);
+
+for (const [select, options] of [[$('cargo'), CARGO_TYPES], [$('pickup'), ZONES], [$('destination'), ZONES]]) {
+  select.append(...options.map((value) => new Option(value, value)));
+}
+$('pickup').value = 'A1';
+$('destination').value = 'C2';
+
+const client = new LiveDataClient({ transport: 'mqtt', url, clientId: `cargoshield-console-${deviceId}` });
+const send = (payload) => client.publish(topic.command, payload);
+
+document.querySelectorAll('button[data-cmd]').forEach((button) => {
+  button.addEventListener('click', () => send(COMMANDS[button.dataset.cmd]()));
+});
+$('cargo').addEventListener('change', (event) => send(COMMANDS.set_cargo(event.target.value)));
+for (const id of ['pickup', 'destination']) {
+  $(id).addEventListener('change', () => send(COMMANDS.set_mission($('pickup').value, $('destination').value)));
+}
+$('obstacle').addEventListener('input', (event) => { $('obstacle-value').value = event.target.value; });
+$('obstacle-send').addEventListener('click', () => send(COMMANDS.set_obstacle($('obstacle').value)));
+
+const show = (value) => (value === undefined || value === null ? '—' : Array.isArray(value) ? value.join(' → ') : typeof value === 'number' ? (Number.isInteger(value) ? value : value.toFixed(3)) : value);
+
+function render(state) {
+  for (const [key, path] of Object.entries(DISPLAY_PATHS)) {
+    const element = $(`v-${key}`);
+    if (!element) continue;
+    if (element.tagName === 'PROGRESS') element.value = read(state, path) ?? 0;
+    else element.textContent = show(read(state, path));
+  }
+  const status = read(state, 'status');
+  $('status').textContent = show(status);
+  $('status').className = statusTone(status);
+  // Reflect engine-side changes without fighting the operator mid-drag.
+  if (document.activeElement !== $('cargo')) $('cargo').value = read(state, 'cargo_type') ?? $('cargo').value;
+}
+
+client.on('error', (error) => { $('link').textContent = `error: ${error?.message ?? error}`; });
+await client.connect();
+$('link').textContent = `${url} · ${topic.state}`;
+// State is retained, so this renders the last known mission immediately on open.
+await client.subscribe(topic.state, (message) => render(message.payload));
+</script>
+</body>
+</html>

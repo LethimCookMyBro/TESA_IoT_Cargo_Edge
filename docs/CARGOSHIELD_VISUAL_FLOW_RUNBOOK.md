@@ -48,43 +48,87 @@ Sensor Studio runs as a webview inside the IDE, so the graph is built by hand. N
 
 So the preset file cannot be produced without a human building the graph and clicking Export, and its schema must never be hand-written. `visual-flow/cargoshield-edge.trn-flow-preset.json` therefore does not exist yet; the Python side it talks to is fully verified and evidenced in `reports/demo_e2e_evidence.json`.
 
+## What Sensor Studio 0.1.9 can and cannot be here
+
+The installed build runs release profile `minimal-sensor`, which disables the **Dashboard operator HMI pane** and the whole **Dashboard palette category**. All three shipped tier profiles (`tier-basic`, `tier-pro`, `tier-pro-plus`) disable them too, so no tier in this build brings them back. The `scene` and `generator` categories are off as well. Evidence and the full table are in [the capability audit](BITSTREAM_VISUAL_FLOW_CAPABILITIES.md).
+
+That means there is **no `dashboard-button`, `dashboard-select`, `dashboard-slider` or `dashboard-knob` in the Library**, and therefore no way to build an operator control surface on the canvas. Earlier revisions of this runbook told you to drag those nodes; they cannot appear, and those steps have been removed.
+
+Split the job accordingly:
+
+| Job | Where | Status |
+|---|---|---|
+| Show live mission state | Sensor Studio flow: an MQTT subscriber into display nodes from the enabled `connectivity`/`output` categories | to be built and confirmed in the UI |
+| Send operator commands | `webapp/index.html`, a local page using the extension's own bundled Live-Data SDK over MQTT-over-WebSocket | built; command contract covered by `tests/test_webapp_controls.py` |
+
+Do not name a node in this runbook that you have not seen in the 0.1.9 Library.
+
+## Operator controls — local console (`webapp/`)
+
+`webapp/index.html` sends exactly the documented commands and renders the verified state paths. It uses `webapp/live-data.browser.js`, copied unmodified from the installed extension (`out/live-data-sdk/`), so there is nothing to install.
+
+Serve it with the extension's own commands:
+
+1. `Ctrl+Shift+P` → **Serve Web App Folder over HTTP** (`bitstream-studio.serveWebAppFolder`), choose the repository's `webapp` folder.
+2. `Ctrl+Shift+P` → **Open in Browser (Dev Server)** (`bitstream-studio.openInBrowser`). Use **Set Local Web App Port (Browser)** first if the default port is taken.
+3. The page defaults to device `cargo-robot-01` and `ws://127.0.0.1:8883`. Override per URL when needed: `?device=cargo-robot-01&url=ws://127.0.0.1:8883`.
+
+Because state is retained, the page renders the last known mission the moment it opens, before you press anything.
+
+What is proven and what is not:
+
+- **Proven:** every payload the page can emit is accepted by the engine, the page's zone options match `DEMO_GRAPH`, and every path the page binds exists in a real state payload — `tests/test_webapp_controls.py` reads these straight out of `webapp/controls.js` via node, so the page and engine cannot drift apart silently. MQTT-over-WebSocket on `8883` delivers retained state (`websocket_transport` in `reports/demo_e2e_evidence.json`).
+- **Not proven:** the page has not been opened in a browser from this session. The vendor bundle is a browser ESM build and refuses to run under Node, so its rendering and the SDK's browser transport are unverified here. Open it once and confirm before demonstrating.
+
+### Before you start clicking
+
+The Python side is locked and evidenced (`reports/demo_e2e_evidence.json`, 14/14 checks). Two behaviours will otherwise look like flow bugs:
+
+- **The subscriber shows state before you press anything.** State is retained, so a freshly wired `mqtt-subscriber` renders the last known state on connect. That is correct, not a stale node.
+- **Standard and fragile pick the same route on the very first run.** Route cost uses the learned `risk_map`, which starts empty. Run the demo once, then switch cargo type and run again; the second run is where the route diverges. Speed ratios differ on every run.
+
 ### Step 1 — minimum state flow
 
 1. In the **Library** panel, search `mqtt` and drag **MQTT Subscriber** (`mqtt-subscriber`) onto the canvas.
 2. Drag **Message Viewer** (`message-viewer`) to its right.
-3. Click the **MQTT Subscriber** node. In **Inspector**, set Host `127.0.0.1`, Port `1883`, Topic `cargoshield/cargo-robot-01/state`. If the node only offers a URL field, use `mqtt://127.0.0.1:1883`; if it is WebSocket-only, use `ws://127.0.0.1:8883/mqtt`.
+3. Click the **MQTT Subscriber** node. In **Inspector**, set Topic `cargoshield/cargo-robot-01/state` and point the connection at Studio's own preset `bitstream-local-mqtt`: host `127.0.0.1`, port `8883`, transport `ws`, path `/`. If the node exposes a plain host/port pair with TCP, `127.0.0.1:1883` works too; both ports are the same broker.
 4. Drag from the subscriber's **Message** output port to the Message Viewer's **Message** input port. Leave **Connected**, **Topic**, and **Received** unwired.
 5. Press the Studio **Run/Play** control. The subscriber's `Connected` port should read `true`.
 
 `HOLD_UNCERTAIN` is displayed as `HOLDING`: it is an amber, non-fatal pause with speed ratio `0.0`, distinct from red `ERROR` and red `SAFE_STOPPED`. It can be paused, reset, or superseded by the next valid replay window; it does not set the manual-resume latch.
 
-### Step 2 — cargo command flow
+### Step 2 — commands
 
-1. Drag **Dashboard Select** (`dashboard-select`), **JSON Pack** (`json-pack`), and **MQTT Publisher** (`mqtt-publisher`).
-2. Inspector on the select node: options `standard` and `fragile`.
-3. Inspector on `json-pack`: key `action` = constant `set_cargo`; key `cargo_type` = the select node's value input.
-4. Wire select **Value** → `json-pack` `cargo_type` input, then `json-pack` **Object/JSON** output → publisher **Message** input.
-5. Inspector on the publisher: Host `127.0.0.1`, Port `1883`, Topic `cargoshield/cargo-robot-01/command`.
-6. Choose **Fragile**. The Message Viewer from step 1 must show `"cargo_type":"fragile"` and a `route.reason` of `stability-first; …`.
+Commands do **not** come from the canvas in this build: the Dashboard input widgets are gated off. Use the local console described above (`webapp/index.html`) and leave the flow as a subscriber.
 
-### Steps 3-6 — remaining command branches
+With the console open, choose **Fragile**. The Message Viewer from step 1 must show `"cargo_type":"fragile"`, proving the canvas and the console are talking to the same engine.
 
-Each branch is the same shape: control → `json-pack` → the **same** `mqtt-publisher` (or a copy with identical settings).
+If a later Studio build re-enables the Dashboard category, the command shape to rebuild on-canvas is control → `json-pack` → `mqtt-publisher` on `cargoshield/cargo-robot-01/command`, with the payloads listed in `webapp/controls.js`.
 
-| Branch | Control nodes | `json-pack` keys |
+### Step 3 — output bindings
+
+Wire the subscriber's **Message** output into display nodes from the enabled `output` category and set each display's path field using the verified table in [the build sheet](../visual-flow/CARGOSHIELD_SENSOR_STUDIO_FLOW_BUILD.md).
+
+Candidate display nodes present in the bundle and belonging to the enabled `output` category: `indicator`, `numeric-display`, `message-viewer`, `plotter`, `sparkline`, `radial-gauge`, `bar-meter`, `progress-bar`. Confirm each one in the Library before wiring; `dashboard-gauge`, `dashboard-text`, `dashboard-status` and `dashboard-led` are **not** available.
+
+Suggested bindings once you have confirmed the nodes exist:
+
+| Value | Path | Node |
 |---|---|---|
-| Mission | four `dashboard-button` (Start, Pause, Reset, **Resume / Clear Safe Stop**) | `action` = `start` / `pause` / `reset` / `manual_resume` |
-| Collision | `dashboard-slider` (0-200), `dashboard-button` (Clear) | `action` = `set_obstacle` + `distance` = slider value; and `action` = `clear_obstacle` |
-| Location | two `dashboard-select` (pickup, destination; options `A1 A2 B1 B2 C1 C2`) | `action` = `set_mission`, `pickup`, `destination` |
-| IMU diagnostic | `bmi270-input` → `sensor-snapshot` | publish to `device/<id>/devkit-twin/telemetry` only; the Python service answers with a diagnostic string, not inference |
+| Speed ratio | `last.decision.speed_ratio` | `radial-gauge` or `bar-meter` (range 0-1) |
+| Progress | `last.progress` | `progress-bar` (range 0-1) |
+| Safety action | `last.decision.action` | `indicator` |
+| Vibration score | `last.vibration_score` | `sparkline` or `plotter` |
+| Confidence | `last.confidence` | `numeric-display` |
+| Route / risk map / events | `route`, `risk_map`, `events` | `message-viewer` (objects and arrays) |
 
-### Step 7 — output bindings
+### Step 4 — IMU diagnostic branch (optional)
 
-Wire the subscriber's **Message** output to each display and set the display's path field using the verified table in [the build sheet](../visual-flow/CARGOSHIELD_SENSOR_STUDIO_FLOW_BUILD.md). Use `dashboard-gauge` for `last.decision.speed_ratio` (range 0-1), `dashboard-text` for `route.reason`, `dashboard-status`/`dashboard-led` for `last.vibration_risk`, `indicator` for `last.decision.action`, `message-viewer` for `risk_map`, and `sparkline`/`plotter` for `last.vibration_score`.
+`bmi270-input` → `sensor-snapshot`, publishing to `device/<id>/devkit-twin/telemetry` only. The Python service answers with a rate-limited diagnostic string, not inference.
 
-### Step 8 — 3D branch
+### 3D branch — not available
 
-Add `model-select` → `model-viewer` → `scene-output` only after picking a real model in the Asset Manager. Nothing in this repository has tested a live robot binding; do not describe one as working until it is seen moving.
+`model-select`, `model-viewer` and `scene-output` are in the `scene` category and the Stage 3D pane is disabled in every profile of this build, so the Digital Twin branch cannot be built here at all. Do not describe one as working.
 
 ### Export
 

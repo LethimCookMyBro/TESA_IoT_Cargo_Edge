@@ -40,13 +40,24 @@ Verified from `cargoshield/cargo-robot-01/state` on 2026-07-25 against the runni
 
 Studio display nodes read a single value, so point each one at a leaf path. Send the whole message to `message-viewer` for `risk_map`, `route`, and `events`, which are objects/arrays.
 
-## Required visual branches
+## What this build can actually host
 
-1. **IMU:** `bmi270-input` → `sensor-snapshot` → `json-pack` → `mqtt-publisher` → Python service. The Python state returns through `mqtt-subscriber` to `message-viewer`, `numeric-display`, `indicator`, and `sparkline`/`plotter`.
-2. **Cargo:** `dashboard-select` (Standard/Fragile) → `json-pack` → `mqtt-publisher` command.
-3. **Collision:** `dashboard-slider` and `dashboard-button` (Clear obstacle) → `compare`/`logic-gate` for visual warning → command publisher. Python's returned `SAFE_STOP` remains authoritative.
-4. **Mission:** `dashboard-select` for pickup/destination plus Start/Pause/Reset `dashboard-button` controls → command publisher. Bind returned route/status to dashboard displays.
-5. **Feedback:** Bind returned `risk_map` state to `message-viewer`/`plotter`; it represents the Python engine's learned zone-risk feedback into later route cost.
-6. **Output:** Bind returned `speed_ratio`, route, vibration risk, and safety action to `dashboard-gauge`, `dashboard-text`, `dashboard-status`, and `dashboard-led`. Add `model-viewer` → `scene-output` only after a real 3D model is selected in Studio; do not claim a live binding before testing it.
+The installed 0.1.9 runs release profile `minimal-sensor`, which disables the Dashboard pane, the whole `dashboard` palette category, and the `scene` and `generator` categories — in every shipped tier. See [the capability audit](../docs/BITSTREAM_VISUAL_FLOW_CAPABILITIES.md) for the profile evidence.
 
-Every Studio transport node must use the exact command/state topic above. Set MQTT details in the node inspector rather than editing a generated JSON file.
+So the canvas here is a **state display**, not a control surface. Operator commands come from `webapp/index.html`; the Studio flow subscribes and renders.
+
+## Visual branches that are possible in this build
+
+1. **State in:** `mqtt-subscriber` on `cargoshield/cargo-robot-01/state` → `message-viewer`, plus display nodes from the enabled `output` category (`indicator`, `numeric-display`, `radial-gauge`, `bar-meter`, `progress-bar`, `sparkline`, `plotter`).
+2. **Feedback:** bind returned `risk_map` to `message-viewer`; it is the engine's learned zone-risk that feeds later route cost.
+3. **IMU diagnostic (optional):** `bmi270-input` → `sensor-snapshot` → `json-pack` → `mqtt-publisher` to `device/<id>/devkit-twin/telemetry`. The service answers with a rate-limited diagnostic string, never inference.
+
+Confirm every node above in the 0.1.9 Library before wiring it. This sheet lists identifiers found in the bundle plus the categories the profile enables; it does not claim any of them has been seen on the canvas.
+
+## Branches that are not possible in this build
+
+- **Any on-canvas control** (cargo select, obstacle slider, Start/Pause/Reset/Resume buttons, pickup/destination selects) — the `dashboard` category is off. Use `webapp/index.html`; its payloads live in `webapp/controls.js` and are covered by `tests/test_webapp_controls.py`.
+- **Digital Twin / 3D** (`model-select`, `model-viewer`, `scene-output`) — the `scene` category and the Stage 3D pane are off.
+- **Constant nodes** (`number-constant`, `boolean-constant`) — the `generator` category is off, so a literal cannot be introduced on-canvas either.
+
+Every Studio transport node must use the exact command/state topic above. Set MQTT details in the node inspector rather than editing a generated JSON file. Studio's own connection preset is `bitstream-local-mqtt`: `127.0.0.1`, port `8883`, transport `ws`, path `/`.

@@ -35,16 +35,24 @@ Python CargoShield Engine
 - ตัดสินใจ HOLD / SLOW DOWN / SAFE STOP
             ↓
 Local MQTT Broker
-127.0.0.1:1883
-            ↓
-Bitstream Sensor Studio
-- Visual Flow
-- Dashboard
-- Controls
-- Digital Twin
+127.0.0.1  TCP 1883 / WebSocket 8883
+            ↓                    ↓
+Bitstream Sensor Studio      webapp/index.html
+- Visual Flow (subscriber)   - Controls ทุกปุ่ม
+- Display nodes              - Display สถานะ
 ```
 
-Python เป็นสมองหลัก ส่วน Sensor Studio ทำหน้าที่รับคำสั่งและแสดงสถานะ
+Python เป็นสมองหลัก ปลายทางฝั่งแสดงผลมีสองทาง
+
+### ข้อจำกัดของ Sensor Studio 0.1.9 ที่ติดตั้ง
+
+Build นี้รัน release profile `minimal-sensor` ซึ่ง **ปิด Dashboard pane และ palette หมวด `dashboard` ทั้งหมด** และปิดหมวด `scene` กับ `generator` ด้วย ตรวจแล้วว่า tier profile ทั้งสามที่มากับตัวติดตั้ง (`tier-basic`, `tier-pro`, `tier-pro-plus`) ปิดเหมือนกันหมด ไม่มี tier ไหนเปิดให้
+
+ผลคือใน Library **ไม่มี** `dashboard-button`, `dashboard-select`, `dashboard-slider`, `dashboard-knob` ดังนั้น canvas ของ Sensor Studio สร้างเป็นแผงควบคุมไม่ได้ ทำได้แค่เป็นจอแสดงผลที่ subscribe state
+
+คำสั่งจากผู้ควบคุมจึงย้ายไปที่ `webapp/index.html` ซึ่งเป็นหน้าเว็บโลคอลที่ใช้ Live-Data SDK ที่มากับส่วนขยายเอง (`live-data.browser.js`) คุยกับ broker ผ่าน MQTT-over-WebSocket พอร์ต `8883`
+
+รายละเอียดหลักฐานอยู่ใน `docs/BITSTREAM_VISUAL_FLOW_CAPABILITIES.md`
 
 ### MQTT Topics
 
@@ -236,7 +244,7 @@ speed_ratio = 0.0
 - ผลทดสอบล่าสุด:
 
 ```text
-47 passed
+50 passed
 ```
 
 ---
@@ -385,7 +393,9 @@ visual-flow/cargoshield-edge.trn-flow-preset.json
 - ยังไม่มี ToF หรือ Ultrasonic Sensor จริง
 - ลำดับ 10 หน้าต่างในรอบสาธิตเป็น curated sequence ที่เลือกไว้ล่วงหน้า ไม่ใช่การสุ่มหรือการวิ่งจริงบนพื้น
 - Zone ที่เดินระหว่างสาธิตมาจาก route ที่วางไว้ตอนเริ่ม ไม่ได้มาจากตำแหน่งจริงของหุ่นยนต์
-- Visual Flow และ Digital Twin ยังไม่ได้สร้างและยังไม่เคยเห็นทำงานจริง จึงยังอ้างไม่ได้
+- Visual Flow ยังไม่ได้สร้างและยังไม่เคยเห็นทำงานจริง จึงยังอ้างไม่ได้
+- Digital Twin / 3D สร้างใน build นี้ไม่ได้เลย เพราะหมวด `scene` และ Stage 3D ถูกปิดในทุก profile
+- `webapp/index.html` ยังไม่เคยถูกเปิดในเบราว์เซอร์จากเซสชันนี้ ตรรกะปุ่มและ path ถูกทดสอบแล้วผ่าน `tests/test_webapp_controls.py` แต่การเรนเดอร์จริงยังไม่ยืนยัน ต้องเปิดดูหนึ่งครั้งก่อนสาธิต
 - ยังไม่มี SLAM
 - ยังไม่มี Autonomous Avoidance ที่ทดสอบกับหุ่นยนต์จริง
 - Risk Map เป็น Named-Zone Risk Map
@@ -435,7 +445,7 @@ MQTT Bridge              : ทำงานแล้ว
 Obstacle Contract        : ทำงานแล้ว (ตอบสนองสด)
 Demo Replay              : ทำงานแล้ว (10 หน้าต่าง ~10 วินาที)
 End-to-End MQTT          : ตรวจผ่านแล้ว (reports/demo_e2e_evidence.json)
-Automated Tests          : 47 passed
+Automated Tests          : 50 passed
 Sensor Studio Dashboard  : ยังต้องสร้างด้วยมือ (เป้าหมายถัดไป)
 Visual Flow Export       : ยังไม่มี ต้องคลิก Export ใน Studio (เป้าหมายถัดไป)
 Digital Twin             : ยังต้องเชื่อม (เป้าหมายถัดไป)
