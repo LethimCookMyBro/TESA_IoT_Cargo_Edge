@@ -190,11 +190,12 @@ function render(state) {
   if (state?.error) toast(state.error, true);
 }
 
-setInterval(() => {
+function tickAge() {
   if (lastStateAt === null) return;
   const seconds = (Date.now() - lastStateAt) / 1000;
   $('age').textContent = seconds < 1 ? 'just now' : `${seconds.toFixed(1)} s ago`;
-}, 250);
+}
+setInterval(tickAge, 250);
 
 /* ---------------- transport ---------------- */
 
