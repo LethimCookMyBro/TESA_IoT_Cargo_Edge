@@ -200,10 +200,11 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0a0d11);
-  scene.fog = new THREE.Fog(0x0a0d11, 46, 96);
+  scene.fog = new THREE.Fog(0x0a0d11, 62, 132);
 
   const camera = new THREE.PerspectiveCamera(48, 1, 0.5, 220);
-  const HOME = { position: new THREE.Vector3(26, 24, 30), target: new THREE.Vector3(0, 1.5, 0) };
+  // Framed so the whole demo map, both rack walls and the zone labels fit at 16:9 and on a laptop.
+  const HOME = { position: new THREE.Vector3(32, 36, 46), target: new THREE.Vector3(0, 1.5, 0) };
   camera.position.copy(HOME.position);
 
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -214,7 +215,7 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
   controls.maxPolarAngle = Math.PI * 0.48;
   controls.target.copy(HOME.target);
 
-  scene.add(new THREE.HemisphereLight(0x9fc6ff, 0x101418, 0.75));
+  scene.add(new THREE.HemisphereLight(0x9fc6ff, 0x141a20, 1.0));
   const key = new THREE.DirectionalLight(0xf2f6ff, 1.6);
   key.position.set(22, 34, 16);
   key.castShadow = true;
@@ -308,8 +309,8 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
     active.position.y = 0.05;
     active.visible = false;
     const label = makeLabel(256, 128);
-    label.sprite.scale.set(4.2, 2.1, 1);
-    label.sprite.position.y = 4.2;
+    label.sprite.scale.set(3.6, 1.8, 1);
+    label.sprite.position.y = 2.6;
     group.add(pad, heat, active, label.sprite);
     scene.add(group);
     zoneMarkers.set(name, { pad, heat, active, label });

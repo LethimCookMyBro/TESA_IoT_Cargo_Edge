@@ -1,0 +1,104 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "steps": [
+    {
+      "step": "reset",
+      "status": "IDLE"
+    },
+    {
+      "step": "start",
+      "status": "MOVING",
+      "screenshot": "reports/screenshots/MOVING.png"
+    },
+    {
+      "step": "run to completion",
+      "status": "COMPLETED",
+      "screenshot": "reports/screenshots/COMPLETED.png"
+    },
+    {
+      "step": "start again",
+      "status": "MOVING"
+    },
+    {
+      "step": "obstacle 50 cm",
+      "status": "SLOWING",
+      "screenshot": "reports/screenshots/SLOW_DOWN.png"
+    },
+    {
+      "step": "obstacle 20 cm",
+      "status": "SAFE_STOPPED",
+      "screenshot": "reports/screenshots/SAFE_STOPPED.png"
+    },
+    {
+      "step": "manual resume",
+      "status": "READY"
+    },
+    {
+      "step": "clear obstacle",
+      "status": "READY",
+      "screenshot": "reports/screenshots/READY.png"
+    },
+    {
+      "step": "start after clearing",
+      "status": "MOVING"
+    },
+    {
+      "step": "second run completes",
+      "status": "COMPLETED",
+      "screenshot": "reports/screenshots/COMPLETED_second_run.png"
+    },
+    {
+      "step": "pause",
+      "status": "PAUSED"
+    },
+    {
+      "step": "reset again",
+      "status": "IDLE"
+    }
+  ],
+  "screenshots": {
+    "MOVING": "reports/screenshots/MOVING.png",
+    "COMPLETED": "reports/screenshots/COMPLETED.png",
+    "SLOW_DOWN": "reports/screenshots/SLOW_DOWN.png",
+    "SAFE_STOPPED": "reports/screenshots/SAFE_STOPPED.png",
+    "READY": "reports/screenshots/READY.png",
+    "COMPLETED_second_run": "reports/screenshots/COMPLETED_second_run.png"
+  },
+  "retained_state_on_open": {
+    "status": "IDLE",
+    "age": "just now",
+    "rendered_before_any_click": true
+  },
+  "webgl": {
+    "canvas_visible": true,
+    "fallback_shown": false,
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+  },
+  "slow_down": {
+    "action": "SLOW_DOWN",
+    "speed_ratio": "0.500",
+    "obstacle": "50 cm \u00b7 slow region"
+  },
+  "safe_stop": {
+    "action": "SAFE_STOP",
+    "speed_ratio": "0",
+    "obstacle": "20 cm \u00b7 stop region"
+  },
+  "after_clear": {
+    "obstacle": "N/A"
+  },
+  "cargo_switch": {
+    "fragile": "fragile",
+    "screenshot": "reports/screenshots/FRAGILE_cargo.png"
+  },
+  "route_switch": {
+    "nodes": "A2 \u2192 A1 \u2192 B1 \u2192 C1",
+    "policy": "stability-first; demo distance and learned zone-risk costs"
+  },
+  "fps": "14 fps",
+  "console": {
+    "errors": [],
+    "message_count": 0
+  },
+  "passed": true
+}

@@ -3,156 +3,168 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CargoShield operator console</title>
-<style>
-  :root { color-scheme: light dark; --gap: 12px; }
-  body { margin: 0; padding: 20px; font: 14px/1.5 system-ui, sans-serif; }
-  h1 { font-size: 18px; margin: 0 0 4px; }
-  .sub { opacity: .7; margin: 0 0 16px; }
-  .grid { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-  fieldset { border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 8px; padding: 12px; }
-  legend { padding: 0 6px; font-weight: 600; }
-  button, select, input { font: inherit; padding: 6px 10px; border-radius: 6px; }
-  button { cursor: pointer; }
-  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; }
-  dt { opacity: .7; }
-  dd { margin: 0; font-variant-numeric: tabular-nums; }
-  #status { font-weight: 700; }
-  .go { color: #17803d; } .hold { color: #b45309; } .stop { color: #b91c1c; } .idle { opacity: .7; }
-  #link { font-size: 12px; opacity: .8; }
-  progress { width: 100%; }
-</style>
+<title>CargoShield · 3D Operator Console</title>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.min.js" } }
+</script>
 </head>
 <body>
-<h1>CargoShield operator console</h1>
-<p class="sub">Local control surface for <code>cargo.mqtt_service</code>. The Python engine stays authoritative for inference, policy and safe stops; this page only sends the documented commands and renders published state.</p>
-<p id="link">connecting…</p>
 
-<div class="grid">
-  <fieldset>
-    <legend>Mission</legend>
-    <div class="row">
-      <button data-cmd="start">Start</button>
-      <button data-cmd="pause">Pause</button>
-      <button data-cmd="manual_resume">Resume / Clear Safe Stop</button>
-      <button data-cmd="reset">Reset</button>
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 2 4 5.2v6.1c0 5 3.4 9.3 8 10.7 4.6-1.4 8-5.7 8-10.7V5.2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="m8.6 12 2.4 2.4 4.4-4.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <h1>CargoShield</h1>
+      <p class="brand-sub">3D Operator Console</p>
     </div>
-  </fieldset>
+  </div>
 
-  <fieldset>
-    <legend>Cargo</legend>
-    <div class="row">
-      <label>Type <select id="cargo"></select></label>
+  <div class="topbar-stats">
+    <div class="stat">
+      <span class="stat-key">Link</span>
+      <span class="stat-value"><span id="link-dot" class="dot dot-idle" aria-hidden="true"></span><span id="link-text">connecting…</span></span>
     </div>
-  </fieldset>
-
-  <fieldset>
-    <legend>Route</legend>
-    <div class="row">
-      <label>Pickup <select id="pickup"></select></label>
-      <label>Destination <select id="destination"></select></label>
+    <div class="stat">
+      <span class="stat-key">Device</span>
+      <span class="stat-value" id="device-id">—</span>
     </div>
-  </fieldset>
-
-  <fieldset>
-    <legend>Obstacle (simulated)</legend>
-    <div class="row">
-      <input id="obstacle" type="range" min="0" max="200" step="5" value="200">
-      <output id="obstacle-value">200</output>
-      <button id="obstacle-send">Set</button>
-      <button data-cmd="clear_obstacle">Clear</button>
+    <div class="stat">
+      <span class="stat-key">Mission</span>
+      <span class="stat-value"><strong id="status" class="tone-idle" role="status" aria-live="polite">—</strong></span>
     </div>
-  </fieldset>
+    <div class="stat">
+      <span class="stat-key">Last state</span>
+      <span class="stat-value" id="age">no state yet</span>
+    </div>
+  </div>
+</header>
 
-  <fieldset>
-    <legend>Mission state</legend>
-    <dl>
-      <dt>Status</dt><dd id="status">—</dd>
-      <dt>Cargo</dt><dd id="v-cargo_type">—</dd>
-      <dt>Zone</dt><dd id="v-zone">—</dd>
-      <dt>Obstacle</dt><dd id="v-obstacle_distance">—</dd>
-      <dt>Progress</dt><dd><progress id="v-progress" max="1" value="0"></progress></dd>
-    </dl>
-  </fieldset>
+<main class="layout">
+  <section class="stage" aria-label="Warehouse simulation">
+    <canvas id="stage" aria-label="3D view of the demo warehouse, the route and the cargo robot"></canvas>
 
-  <fieldset>
-    <legend>Surface AI</legend>
-    <dl>
-      <dt>Class</dt><dd id="v-label">—</dd>
-      <dt>Confidence</dt><dd id="v-confidence">—</dd>
-      <dt>Vibration risk</dt><dd id="v-risk">—</dd>
-    </dl>
-  </fieldset>
+    <div class="stage-toolbar">
+      <button type="button" id="reset-camera" class="ghost">Reset camera</button>
+      <span class="chip" id="fps" title="Renderer frame rate">— fps</span>
+    </div>
 
-  <fieldset>
-    <legend>Safety decision</legend>
-    <dl>
-      <dt>Action</dt><dd id="v-action">—</dd>
-      <dt>Speed ratio</dt><dd id="v-speed_ratio">—</dd>
-      <dt>Reason</dt><dd id="v-reason">—</dd>
-    </dl>
-  </fieldset>
+    <ul class="legend" aria-label="Route legend">
+      <li><i class="swatch" style="--swatch:#22c55e"></i>travelled</li>
+      <li><i class="swatch" style="--swatch:#38bdf8"></i>current hop</li>
+      <li><i class="swatch" style="--swatch:#3b4c5e"></i>remaining</li>
+      <li><i class="swatch" style="--swatch:#facc15"></i>slow region</li>
+      <li><i class="swatch" style="--swatch:#ef4444"></i>safe stop</li>
+    </ul>
 
-  <fieldset>
-    <legend>Route / risk</legend>
-    <dl>
-      <dt>Nodes</dt><dd id="v-route_nodes">—</dd>
-      <dt>Policy</dt><dd id="v-route_reason">—</dd>
-    </dl>
-  </fieldset>
-</div>
+    <p class="stage-note">Visualization only — the Python engine owns every decision shown here.</p>
+    <div id="stage-fallback" class="stage-fallback" hidden role="alert">
+      <strong>WebGL is unavailable in this browser.</strong>
+      <span>The console keeps working: all controls and telemetry below are live.</span>
+    </div>
+  </section>
 
-<script type="module">
-import { LiveDataClient, DEFAULT_MQTT_WS_URL } from './live-data.browser.js';
-import { COMMANDS, CARGO_TYPES, ZONES, DISPLAY_PATHS, read, topics, statusTone } from './controls.js';
+  <aside class="side" aria-label="Controls and telemetry">
 
-const params = new URLSearchParams(location.search);
-const deviceId = params.get('device') ?? 'cargo-robot-01';
-const url = params.get('url') ?? DEFAULT_MQTT_WS_URL;   // ws://127.0.0.1:8883
-const topic = topics(deviceId);
-const $ = (id) => document.getElementById(id);
+    <section class="panel">
+      <h2>Mission control</h2>
+      <div class="btn-row">
+        <button type="button" data-cmd="start" class="primary">Start</button>
+        <button type="button" data-cmd="pause">Pause</button>
+        <button type="button" data-cmd="manual_resume">Resume / Clear safe stop</button>
+        <button type="button" data-cmd="reset" class="danger">Reset</button>
+      </div>
 
-for (const [select, options] of [[$('cargo'), CARGO_TYPES], [$('pickup'), ZONES], [$('destination'), ZONES]]) {
-  select.append(...options.map((value) => new Option(value, value)));
-}
-$('pickup').value = 'A1';
-$('destination').value = 'C2';
+      <div class="field-grid">
+        <p class="field">
+          <label for="cargo">Cargo type</label>
+          <select id="cargo"></select>
+        </p>
+        <p class="field">
+          <label for="pickup">Pickup</label>
+          <select id="pickup"></select>
+        </p>
+        <p class="field">
+          <label for="destination">Destination</label>
+          <select id="destination"></select>
+        </p>
+      </div>
 
-const client = new LiveDataClient({ transport: 'mqtt', url, clientId: `cargoshield-console-${deviceId}` });
-const send = (payload) => client.publish(topic.command, payload);
+      <div class="obstacle">
+        <label for="obstacle">Simulated obstacle distance <output id="obstacle-value" for="obstacle">200</output> cm</label>
+        <input id="obstacle" type="range" min="0" max="200" step="5" value="200"
+               aria-describedby="obstacle-hint">
+        <p id="obstacle-hint" class="hint">Engine policy: ≤ 30 cm safe stop · ≤ 80 cm slow down.</p>
+        <div class="btn-row">
+          <button type="button" id="obstacle-send">Set obstacle</button>
+          <button type="button" data-cmd="clear_obstacle">Clear</button>
+        </div>
+      </div>
+    </section>
 
-document.querySelectorAll('button[data-cmd]').forEach((button) => {
-  button.addEventListener('click', () => send(COMMANDS[button.dataset.cmd]()));
-});
-$('cargo').addEventListener('change', (event) => send(COMMANDS.set_cargo(event.target.value)));
-for (const id of ['pickup', 'destination']) {
-  $(id).addEventListener('change', () => send(COMMANDS.set_mission($('pickup').value, $('destination').value)));
-}
-$('obstacle').addEventListener('input', (event) => { $('obstacle-value').value = event.target.value; });
-$('obstacle-send').addEventListener('click', () => send(COMMANDS.set_obstacle($('obstacle').value)));
+    <section class="panel">
+      <h2>Mission state</h2>
+      <dl class="readout">
+        <dt>Cargo</dt><dd id="v-cargo_type">—</dd>
+        <dt>Zone</dt><dd id="v-zone">—</dd>
+        <dt>Obstacle</dt><dd id="v-obstacle_distance">—</dd>
+        <dt>Source</dt><dd id="v-source">—</dd>
+      </dl>
+      <p class="field">
+        <label for="v-progress">Progress <output id="progress-value" for="v-progress">—</output></label>
+        <progress id="v-progress" max="1" value="0"></progress>
+      </p>
+    </section>
 
-const show = (value) => (value === undefined || value === null ? '—' : Array.isArray(value) ? value.join(' → ') : typeof value === 'number' ? (Number.isInteger(value) ? value : value.toFixed(3)) : value);
+    <section class="panel">
+      <h2>Surface AI</h2>
+      <dl class="readout">
+        <dt>Class</dt><dd id="v-label">—</dd>
+        <dt>Confidence</dt><dd id="v-confidence">—</dd>
+        <dt>Vibration risk</dt><dd id="v-risk">—</dd>
+      </dl>
+    </section>
 
-function render(state) {
-  for (const [key, path] of Object.entries(DISPLAY_PATHS)) {
-    const element = $(`v-${key}`);
-    if (!element) continue;
-    if (element.tagName === 'PROGRESS') element.value = read(state, path) ?? 0;
-    else element.textContent = show(read(state, path));
-  }
-  const status = read(state, 'status');
-  $('status').textContent = show(status);
-  $('status').className = statusTone(status);
-  // Reflect engine-side changes without fighting the operator mid-drag.
-  if (document.activeElement !== $('cargo')) $('cargo').value = read(state, 'cargo_type') ?? $('cargo').value;
-}
+    <section class="panel">
+      <h2>Safety decision</h2>
+      <dl class="readout">
+        <dt>Action</dt><dd id="v-action">—</dd>
+        <dt>Speed ratio</dt><dd id="v-speed_ratio">—</dd>
+        <dt>Reason</dt><dd id="v-reason" class="wrap">—</dd>
+      </dl>
+    </section>
 
-client.on('error', (error) => { $('link').textContent = `error: ${error?.message ?? error}`; });
-await client.connect();
-$('link').textContent = `${url} · ${topic.state}`;
-// State is retained, so this renders the last known mission immediately on open.
-await client.subscribe(topic.state, (message) => render(message.payload));
-</script>
+    <section class="panel">
+      <h2>Route &amp; risk</h2>
+      <dl class="readout">
+        <dt>Nodes</dt><dd id="v-route_nodes">—</dd>
+        <dt>Policy</dt><dd id="v-route_reason" class="wrap">—</dd>
+      </dl>
+      <ul id="risk-list" class="risk-list" aria-label="Observed zone risk"></ul>
+    </section>
+
+    <section class="panel">
+      <h2>Event timeline</h2>
+      <ol id="timeline" class="timeline" aria-live="polite" aria-relevant="additions"></ol>
+    </section>
+
+    <section class="panel">
+      <h2>Link diagnostics</h2>
+      <dl class="readout">
+        <dt>Broker</dt><dd id="v-url" class="wrap">—</dd>
+        <dt>State topic</dt><dd id="v-topic" class="wrap">—</dd>
+        <dt>Last error</dt><dd id="v-error" class="wrap">none</dd>
+      </dl>
+    </section>
+  </aside>
+</main>
+
+<div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
+
+<script type="module" src="./app.js"></script>
 </body>
 </html>
