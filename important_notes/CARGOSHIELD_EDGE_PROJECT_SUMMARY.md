@@ -16,7 +16,7 @@
 - เลือกเส้นทางที่เหมาะสม
 - จดจำพื้นที่เสี่ยง
 - ชะลอ หยุดรอ หรือหยุดฉุกเฉิน
-- แสดงผลผ่าน Dashboard และ Digital Twin *(เป้าหมาย ยังไม่เสร็จ)*
+- แสดงผลผ่าน 3D Operator Console ใน `webapp/` *(เสร็จแล้ว)* และ Dashboard บน Sensor Studio *(เป้าหมาย ยังไม่เสร็จ)*
 
 ---
 
@@ -37,12 +37,20 @@ Python CargoShield Engine
 Local MQTT Broker
 127.0.0.1  TCP 1883 / WebSocket 8883
             ↓                    ↓
-Bitstream Sensor Studio      webapp/index.html
+Bitstream Sensor Studio      webapp/ (3D Operator Console)
 - Visual Flow (subscriber)   - Controls ทุกปุ่ม
-- Display nodes              - Display สถานะ
+- Display nodes              - Telemetry panels
+                             - ฉากคลังสินค้า Three.js
 ```
 
 Python เป็นสมองหลัก ปลายทางฝั่งแสดงผลมีสองทาง
+
+**ฉาก 3D เป็น visualization เท่านั้น** ทุกค่าที่วาดบนจอ ทั้งสถานะ การตัดสินใจ speed ratio คลาสพื้นผิว
+zone risk และเส้นทาง อ่านมาจาก state ที่ Python publish ทั้งหมด ไม่มีโค้ดใน `webapp/` ที่ทำ inference
+ใช้ policy หรือเดินภารกิจเอง หุ่นยนต์บนจอจะเคลื่อนที่ก็ต่อเมื่อ engine รายงาน `MOVING` หรือ `SLOWING`
+ความเร็วของ animation คือ `last.decision.speed_ratio` ของ engine เอง และ `PAUSED` / `HOLDING` /
+`SAFE_STOPPED` / `COMPLETED` จะหยุดภาพนิ่งตรงจุดที่ state ล่าสุดบอกไว้ ค่าไหนที่ engine ไม่ได้ส่งมา
+หน้าจอแสดง `N/A` และวัตถุ 3D ที่เกี่ยวข้องจะไม่ถูกวาด
 
 ### ข้อจำกัดของ Sensor Studio 0.1.9 ที่ติดตั้ง
 
@@ -53,6 +61,26 @@ Build นี้รัน release profile `minimal-sensor` ซึ่ง **ปิ�
 คำสั่งจากผู้ควบคุมจึงย้ายไปที่ `webapp/index.html` ซึ่งเป็นหน้าเว็บโลคอลที่ใช้ Live-Data SDK ที่มากับส่วนขยายเอง (`live-data.browser.js`) คุยกับ broker ผ่าน MQTT-over-WebSocket พอร์ต `8883`
 
 รายละเอียดหลักฐานอยู่ใน `docs/BITSTREAM_VISUAL_FLOW_CAPABILITIES.md`
+
+### วิธีเปิด 3D Operator Console
+
+```powershell
+# 1. broker ต้องเปิดอยู่ (Bitstream Studio: Start MQTT Broker) แล้วรัน engine
+.\.venv\Scripts\python.exe -m cargo.mqtt_service --host 127.0.0.1 --port 1883
+
+# 2. เสิร์ฟหน้าเว็บ — ใช้ Ctrl+Shift+P -> Serve Web App Folder over HTTP เลือกโฟลเดอร์ webapp
+#    หรือใช้ static server อะไรก็ได้ เพราะเป็น ES modules ล้วน ไม่มี build step
+.\.venv\Scripts\python.exe -m http.server 8080 --bind 127.0.0.1 --directory webapp
+
+# 3. เปิด http://127.0.0.1:8080/   (state ถูก retain จึงเห็นภารกิจล่าสุดทันทีที่เปิด)
+
+# 4. ตรวจหน้าเว็บอัตโนมัติกับ broker จริง + เก็บ screenshot
+.\.venv\Scripts\python.exe scripts\webapp_ui_check.py --url http://127.0.0.1:8080/
+```
+
+Three.js 0.180.0 (MIT) อยู่ใน `webapp/vendor/three/` ทั้งหมด ไม่มีการเรียก CDN ใด ๆ วันสาธิตจึงไม่ต้องมี
+อินเทอร์เน็ต และไม่มีโมเดล/เท็กซ์เจอร์/ฟอนต์ภายนอก ทุกอย่างในฉากสร้างจาก primitive ของ Three.js และ
+เท็กซ์เจอร์ที่วาดด้วย canvas ตอนรันไทม์
 
 ### MQTT Topics
 
@@ -240,11 +268,14 @@ speed_ratio = 0.0
 - State ปกติ retain แล้ว Flow ที่ subscribe ทีหลังจึงเห็นสถานะทันที
 - Obstacle controls ตอบสนองสดตาม contract ด้านบนแล้ว
 - Replay เป็นชุดสาธิต 10 หน้าต่าง ~10 วินาที แสดงครบทั้ง MOVE, HOLD_UNCERTAIN และความต่างของ cargo policy
-- ตรวจ end-to-end ผ่าน broker จริงด้วย `scripts/demo_e2e_check.py` เก็บหลักฐานไว้ที่ `reports/demo_e2e_evidence.json`
+- ตรวจ end-to-end ผ่าน broker จริงด้วย `scripts/demo_e2e_check.py` เก็บหลักฐานไว้ที่ `reports/demo_e2e_evidence.json` (14/14)
+- **3D Operator Console ใน `webapp/` เสร็จแล้ว** ฉากคลังสินค้า Three.js แบบ procedural, โซน `A1..C2` จาก `DEMO_GRAPH` จริง, เส้นทางจาก `route.nodes`, heat overlay จาก `risk_map`, AGV พร้อมล้อและกล่องสินค้า (standard/fragile ต่างกันชัดเจน), obstacle marker ตามระยะจริง, orbit/pan/zoom + Reset camera
+- เปิดหน้าเว็บจริงในเบราว์เซอร์และทดสอบครบทั้งลำดับสาธิตกับ broker จริงแล้ว ไม่มี console error เก็บหลักฐานที่ `reports/webapp_ui_evidence.json` และภาพที่ `reports/screenshots/`
+- Three.js 0.180.0 (MIT) เก็บไว้ในเครื่องที่ `webapp/vendor/three/` ไม่ใช้ CDN ไม่มี asset ภายนอก
 - ผลทดสอบล่าสุด:
 
 ```text
-50 passed
+58 passed
 ```
 
 ---
@@ -320,6 +351,9 @@ Topic: cargoshield/cargo-robot-01/state
 
 ### Flow ฝั่งคำสั่ง
 
+**สร้างบน canvas ของ build นี้ไม่ได้** เพราะ Dashboard input widgets ถูกปิด คำสั่งทั้งหมดออกจาก
+`webapp/` แทน (เสร็จแล้ว) รูปแบบด้านล่างเก็บไว้เผื่อ build ในอนาคตเปิดหมวด `dashboard` กลับมา:
+
 ```text
 Dashboard Select
 → JSON Pack
@@ -332,7 +366,7 @@ Topic:
 cargoshield/cargo-robot-01/command
 ```
 
-### Controls ที่ต้องเพิ่ม
+### Controls ที่ต้องเพิ่ม (ถ้า Dashboard category กลับมา; ตอนนี้มีครบแล้วใน `webapp/`)
 
 - Standard / Fragile
 - Start
@@ -360,14 +394,13 @@ cargoshield/cargo-robot-01/command
 
 ### Digital Twin
 
-หลังจาก MQTT และ Dashboard ทำงานแล้ว จึงเพิ่ม:
+`Model Viewer → Scene Output` **สร้างใน build นี้ไม่ได้** เพราะหมวด `scene` และ Stage 3D ถูกปิดในทุก profile
+งานส่วนนี้ทำเสร็จแล้วในฝั่ง local webapp แทน (`webapp/scene.js`) ซึ่ง subscribe
+`cargoshield/cargo-robot-01/state` ตัวเดียวกัน เปิดพร้อมกับ Flow บน canvas ได้ ทั้งสองจอเห็น engine
+ตัวเดียวกันในเวลาเดียวกัน วิธีเปิดและวิธีอ่านฉากอยู่ใน `docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md`
 
-```text
-Model Viewer
-→ Scene Output
-```
-
-ต้องเลือกโมเดลจริงจาก Asset Manager และทดสอบการเชื่อมจริงก่อนกล่าวอ้างว่าโมเดลเคลื่อนไหวตามหุ่นยนต์
+หากในอนาคต Studio build ไหนเปิดหมวด `scene` กลับมา จึงค่อยเพิ่ม `Model Viewer → Scene Output` และต้อง
+เลือกโมเดลจริงจาก Asset Manager แล้วทดสอบการเชื่อมจริงก่อนกล่าวอ้างว่าโมเดลเคลื่อนไหวตามหุ่นยนต์
 
 ### ไฟล์ที่ยังไม่มี
 
@@ -394,8 +427,9 @@ visual-flow/cargoshield-edge.trn-flow-preset.json
 - ลำดับ 10 หน้าต่างในรอบสาธิตเป็น curated sequence ที่เลือกไว้ล่วงหน้า ไม่ใช่การสุ่มหรือการวิ่งจริงบนพื้น
 - Zone ที่เดินระหว่างสาธิตมาจาก route ที่วางไว้ตอนเริ่ม ไม่ได้มาจากตำแหน่งจริงของหุ่นยนต์
 - Visual Flow ยังไม่ได้สร้างและยังไม่เคยเห็นทำงานจริง จึงยังอ้างไม่ได้
-- Digital Twin / 3D สร้างใน build นี้ไม่ได้เลย เพราะหมวด `scene` และ Stage 3D ถูกปิดในทุก profile
-- `webapp/index.html` ยังไม่เคยถูกเปิดในเบราว์เซอร์จากเซสชันนี้ ตรรกะปุ่มและ path ถูกทดสอบแล้วผ่าน `tests/test_webapp_controls.py` แต่การเรนเดอร์จริงยังไม่ยืนยัน ต้องเปิดดูหนึ่งครั้งก่อนสาธิต
+- Digital Twin / 3D **บน canvas ของ Sensor Studio** สร้างใน build นี้ไม่ได้เลย เพราะหมวด `scene` และ Stage 3D ถูกปิดในทุก profile ฉาก 3D จึงอยู่ใน `webapp/scene.js` แทน ซึ่ง subscribe topic เดียวกัน
+- ฉาก 3D เป็นการจำลองเชิงภาพ ไม่ใช่ตำแหน่งจริงของหุ่นยนต์ พิกัดโซนบนแผนผังเป็นเลย์เอาต์ที่วางเองให้ตรงกับเส้นเชื่อมของ `DEMO_GRAPH` ไม่ใช่พิกัดคลังสินค้าจริง และการเคลื่อนที่ระหว่างโซนเป็น interpolation เชิงภาพจาก `last.zone` กับ `last.progress` เท่านั้น
+- ทดสอบเบราว์เซอร์แล้วเฉพาะ Chromium 149 บนเครื่องนี้ ยังไม่ได้ลอง Firefox หรือ Safari และยังไม่ได้เปิดผ่านคำสั่ง **Serve Web App Folder over HTTP** ของส่วนขยาย (ใช้ `python -m http.server` ซึ่งเสิร์ฟไฟล์ static ชุดเดียวกัน)
 - ยังไม่มี SLAM
 - ยังไม่มี Autonomous Avoidance ที่ทดสอบกับหุ่นยนต์จริง
 - Risk Map เป็น Named-Zone Risk Map
@@ -418,7 +452,7 @@ CargoShield Edge ไม่ได้เป็นเพียงระบบตร
 - จดจำพื้นที่เสี่ยง
 - ใช้ข้อมูลเดิมช่วยวางเส้นทาง
 - สื่อสารผ่าน MQTT
-- แสดงผลผ่าน Dashboard และ Digital Twin *(เป้าหมาย ยังไม่เสร็จ)*
+- แสดงผลผ่าน 3D Operator Console ใน `webapp/` *(เสร็จแล้ว)* และ Dashboard บน Sensor Studio *(เป้าหมาย ยังไม่เสร็จ)*
 - รองรับการต่อยอดสู่ Secure Edge AI
 
 ---
@@ -444,11 +478,12 @@ HOLDING / SAFE_STOP      : ทำงานแล้ว
 MQTT Bridge              : ทำงานแล้ว
 Obstacle Contract        : ทำงานแล้ว (ตอบสนองสด)
 Demo Replay              : ทำงานแล้ว (10 หน้าต่าง ~10 วินาที)
-End-to-End MQTT          : ตรวจผ่านแล้ว (reports/demo_e2e_evidence.json)
-Automated Tests          : 50 passed
+End-to-End MQTT          : ตรวจผ่านแล้ว 14/14 (reports/demo_e2e_evidence.json)
+Automated Tests          : 58 passed
+3D Operator Console      : ทำงานแล้ว ตรวจในเบราว์เซอร์จริงแล้ว (reports/webapp_ui_evidence.json)
 Sensor Studio Dashboard  : ยังต้องสร้างด้วยมือ (เป้าหมายถัดไป)
 Visual Flow Export       : ยังไม่มี ต้องคลิก Export ใน Studio (เป้าหมายถัดไป)
-Digital Twin             : ยังต้องเชื่อม (เป้าหมายถัดไป)
+Digital Twin บน Studio    : สร้างไม่ได้ใน build นี้ ใช้ webapp/scene.js แทน
 Live BMI270 Inference    : ยังไม่เปิด
 Secure Edge Deployment   : แผนต่อยอด
 ```

@@ -69,6 +69,33 @@ def set_obstacle(page, centimetres: int) -> None:
     page.click("#obstacle-send")
 
 
+def probe_variant(browser, url: str, *, reduced_motion: str | None = None, block_webgl: bool = False) -> dict:
+    """Open the console once more under a hostile condition and check it still works."""
+    context = browser.new_context(viewport={"width": 1600, "height": 950}, reduced_motion=reduced_motion)
+    page = context.new_page()
+    console = Console(page)
+    if block_webgl:
+        page.add_init_script(
+            "HTMLCanvasElement.prototype.getContext = new Proxy(HTMLCanvasElement.prototype.getContext,"
+            " { apply: (fn, self, a) => (String(a[0]).startsWith('webgl') ? null : Reflect.apply(fn, self, a)) });"
+        )
+    try:
+        page.goto(url, wait_until="load")
+        page.wait_for_function("() => document.getElementById('status').textContent !== '—'", timeout=15000)
+        name = "reduced_motion" if reduced_motion else "no_webgl"
+        return {
+            "status_rendered": page.inner_text("#status"),
+            "controls_usable": page.is_enabled('button[data-cmd="start"]'),
+            "telemetry_rendered": page.inner_text("#v-route_nodes"),
+            "canvas_visible": page.is_visible("#stage"),
+            "fallback_shown": page.is_visible("#stage-fallback"),
+            "console_errors": console.errors,
+            "screenshot": snapshot(page, f"fallback_{name}"),
+        }
+    finally:
+        context.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Browser verification of the CargoShield operator console")
     parser.add_argument("--url", default="http://127.0.0.1:8080/")
@@ -114,6 +141,19 @@ def main() -> None:
 
         try:
             run_sequence(page, evidence, step, console)
+            fallbacks = {
+                "reduced_motion": probe_variant(browser, args.url, reduced_motion="reduce"),
+                "no_webgl": probe_variant(browser, args.url, block_webgl=True),
+            }
+            evidence["fallbacks"] = fallbacks
+            # Without WebGL the panels must carry the demo on their own, and neither variant may error.
+            evidence["passed"] = (
+                evidence["passed"]
+                and fallbacks["no_webgl"]["fallback_shown"]
+                and fallbacks["no_webgl"]["controls_usable"]
+                and not fallbacks["no_webgl"]["console_errors"]
+                and not fallbacks["reduced_motion"]["console_errors"]
+            )
         except Exception as exc:  # a failed demo rehearsal is evidence too
             evidence["failure"] = {"error": f"{type(exc).__name__}: {exc}", "screenshot": snapshot(page, "FAILURE"),
                                    "timeline": page.inner_text("#timeline")[:2000],
@@ -156,7 +196,13 @@ def run_sequence(page, evidence: dict, step, console: Console) -> None:
 
         step("manual resume", lambda: page.click('button[data-cmd="manual_resume"]'), "READY")
         page.wait_for_timeout(500)
-        step("clear obstacle", lambda: page.click('button[data-cmd="clear_obstacle"]'), "READY", shot="READY")
+
+        def clear_obstacle() -> None:
+            page.click('button[data-cmd="clear_obstacle"]')
+            # Status is already READY, so wait on the value the command actually changes.
+            page.wait_for_function("() => document.getElementById('v-obstacle_distance').textContent === 'N/A'", timeout=10000)
+
+        step("clear obstacle", clear_obstacle, "READY", shot="READY")
         evidence["after_clear"] = {"obstacle": page.inner_text("#v-obstacle_distance")}
 
         step("start after clearing", lambda: page.click('button[data-cmd="start"]'), "MOVING", "SLOWING", "HOLDING")
@@ -190,7 +236,8 @@ def run_sequence(page, evidence: dict, step, console: Console) -> None:
         page.wait_for_timeout(400)
 
         # 5. Keyboard reachability of the mission controls.
-        page.evaluate("() => document.activeElement?.blur()")
+        # Click a non-focusable region first so tabbing restarts from the top of the document.
+        page.click("header.topbar", position={"x": 600, "y": 20})
         focused = []
         for _ in range(8):
             page.keyboard.press("Tab")

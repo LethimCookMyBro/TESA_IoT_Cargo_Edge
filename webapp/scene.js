@@ -183,6 +183,11 @@ function buildObstacle() {
  * the 2D panels either way.
  */
 export function createScene(canvas, { reducedMotion = false } = {}) {
+  // Probe on a throwaway canvas first: WebGLRenderer logs its own console error before it throws,
+  // and a demo machine without WebGL should reach the 2D fallback with a clean console.
+  const probe = document.createElement('canvas');
+  if (!(probe.getContext('webgl2') || probe.getContext('webgl'))) return null;
+
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -190,7 +195,6 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
     console.warn('CargoShield: WebGL unavailable, falling back to panels only', error);
     return null;
   }
-  if (!renderer.getContext()) return null;
 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;

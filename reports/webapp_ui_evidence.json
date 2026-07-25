@@ -65,7 +65,7 @@
     "COMPLETED_second_run": "reports/screenshots/COMPLETED_second_run.png"
   },
   "retained_state_on_open": {
-    "status": "COMPLETED",
+    "status": "IDLE",
     "age": "just now",
     "rendered_before_any_click": true
   },
@@ -85,7 +85,7 @@
     "obstacle": "20 cm \u00b7 stop region"
   },
   "after_clear": {
-    "obstacle": "20 cm \u00b7 stop region"
+    "obstacle": "N/A"
   },
   "cargo_switch": {
     "fragile": "fragile",
@@ -105,24 +105,39 @@
     "screenshot": "reports/screenshots/READY_laptop_1440x900.png"
   },
   "keyboard_focus_order": [
+    "reset-camera",
+    "BUTTON",
+    "BUTTON",
+    "BUTTON",
+    "BUTTON",
     "cargo",
     "pickup",
-    "destination",
-    "obstacle",
-    "obstacle-send",
-    "BUTTON",
-    "timeline",
-    "BODY"
+    "destination"
   ],
-  "fps": "178 fps",
+  "fps": "179 fps",
   "console": {
-    "errors": [
-      {
-        "type": "error",
-        "text": "WebSocket is already in CLOSING or CLOSED state."
-      }
-    ],
-    "message_count": 1
+    "errors": [],
+    "message_count": 0
   },
-  "passed": false
+  "passed": true,
+  "fallbacks": {
+    "reduced_motion": {
+      "status_rendered": "IDLE",
+      "controls_usable": true,
+      "telemetry_rendered": "A1 \u2192 A2 \u2192 B2 \u2192 C2",
+      "canvas_visible": true,
+      "fallback_shown": false,
+      "console_errors": [],
+      "screenshot": "reports/screenshots/fallback_reduced_motion.png"
+    },
+    "no_webgl": {
+      "status_rendered": "IDLE",
+      "controls_usable": true,
+      "telemetry_rendered": "A1 \u2192 A2 \u2192 B2 \u2192 C2",
+      "canvas_visible": false,
+      "fallback_shown": true,
+      "console_errors": [],
+      "screenshot": "reports/screenshots/fallback_no_webgl.png"
+    }
+  }
 }

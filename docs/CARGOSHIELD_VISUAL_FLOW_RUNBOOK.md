@@ -59,26 +59,88 @@ Split the job accordingly:
 | Job | Where | Status |
 |---|---|---|
 | Show live mission state | Sensor Studio flow: an MQTT subscriber into display nodes from the enabled `connectivity`/`output` categories | to be built and confirmed in the UI |
-| Send operator commands | `webapp/index.html`, a local page using the extension's own bundled Live-Data SDK over MQTT-over-WebSocket | built; command contract covered by `tests/test_webapp_controls.py` |
+| Send operator commands | `webapp/`, a local page using the extension's own bundled Live-Data SDK over MQTT-over-WebSocket | built and driven in a browser; contract covered by `tests/test_webapp_controls.py` |
+| Show the mission in 3D | `webapp/scene.js`, a local Three.js warehouse fed by the same retained state | built and driven in a browser; evidence in `reports/webapp_ui_evidence.json` |
 
 Do not name a node in this runbook that you have not seen in the 0.1.9 Library.
 
-## Operator controls — local console (`webapp/`)
+## Operator console — 3D operator console (`webapp/`)
 
-`webapp/index.html` sends exactly the documented commands and renders the verified state paths. It uses `webapp/live-data.browser.js`, copied unmodified from the installed extension (`out/live-data-sdk/`), so there is nothing to install.
+`webapp/` is a full-screen industrial control surface: a procedurally built Three.js warehouse on the
+left, the mission controls and telemetry on the right. It sends exactly the documented commands and
+renders the verified state paths, using `webapp/live-data.browser.js` copied unmodified from the
+installed extension (`out/live-data-sdk/`), so there is nothing to install.
 
-Serve it with the extension's own commands:
+**The 3D scene is visualization only.** Every status, decision, speed ratio, surface class, zone risk
+and route it draws is read out of a published `cargoshield.state.v1` message. The Python engine
+decides; the browser paints. Nothing in `webapp/` runs inference, applies a policy or advances a
+mission — the robot only moves on screen while the engine reports `MOVING` or `SLOWING`, its animation
+speed is the engine's own `last.decision.speed_ratio`, and `PAUSED`, `HOLDING`, `SAFE_STOPPED` and
+`COMPLETED` freeze it exactly where the last published state put it. Where the engine has published no
+value the panels read `N/A` and the corresponding 3D object stays hidden.
+
+| File | Job |
+|---|---|
+| `webapp/index.html` | Layout, import map, panels |
+| `webapp/styles.css` | Dark control-room theme, responsive at 1920×1080 and laptop widths |
+| `webapp/app.js` | MQTT transport, commands, telemetry panels, event timeline |
+| `webapp/scene.js` | Three.js renderer: warehouse, zones, route, robot, obstacle |
+| `webapp/controls.js` | Pure command/display/visual contract shared with the tests |
+| `webapp/vendor/three/` | three.js r0.180.0, vendored locally (see below) |
+
+### Three.js provenance
+
+three.js **0.180.0** from the npm registry (`npm pack three@0.180.0`), **MIT licence**. Only three files
+are copied, unmodified: `build/three.module.min.js`, `build/three.core.min.js` and
+`examples/jsm/controls/OrbitControls.js`, plus the upstream `LICENSE`. Details in
+`webapp/vendor/three/NOTICE.md`.
+
+It is vendored rather than pulled from a CDN because **the demo machine may have no internet access**.
+No GLB/GLTF models, textures or font files are shipped: the warehouse, racks, robot, cargo and all
+labels are built from three.js primitives and canvas-drawn textures at runtime, so there is no asset of
+unknown licence anywhere in the page.
+
+### Serve and open
 
 1. `Ctrl+Shift+P` → **Serve Web App Folder over HTTP** (`bitstream-studio.serveWebAppFolder`), choose the repository's `webapp` folder.
 2. `Ctrl+Shift+P` → **Open in Browser (Dev Server)** (`bitstream-studio.openInBrowser`). Use **Set Local Web App Port (Browser)** first if the default port is taken.
 3. The page defaults to device `cargo-robot-01` and `ws://127.0.0.1:8883`. Override per URL when needed: `?device=cargo-robot-01&url=ws://127.0.0.1:8883`.
 
-Because state is retained, the page renders the last known mission the moment it opens, before you press anything.
+Any static server works and needs no VS Code — the page is plain ES modules, no build step:
+
+```powershell
+.\.venv\Scripts\python.exe -m http.server 8080 --bind 127.0.0.1 --directory webapp
+# then open http://127.0.0.1:8080/
+```
+
+Because state is retained, the page renders the last known mission the moment it opens, before you
+press anything.
+
+### Reading the scene
+
+- **Zones** `A1 A2 B1 B2 C1 C2` are the `DEMO_GRAPH` nodes; the faint lanes between them are its edges. Each pad is tinted by that zone's observed Surface AI class and ringed by a green→red heat overlay from `risk_map[zone].score`. A zone the engine has not observed reads `risk N/A` and gets no heat.
+- **Route** the published `route.nodes`, one ribbon per hop: green behind the robot, cyan for the hop it is on, grey ahead of it. A cyan ring marks the reported `last.zone`.
+- **Robot** the beacon takes the mission status colour. Standard cargo is an opaque steel crate; fragile cargo is a translucent amber crate with a red strap, labelled on the model.
+- **Obstacle** appears only when `obstacle_distance` is set, placed ahead of the robot at 1 m per 20 cm of the reported distance: amber inside the engine's warning region, red with a pulsing safety ring inside its stop region. A `SAFE_STOPPED` mission also draws a red perimeter around the robot.
+- **Reset camera** returns the orbit camera to its framing; drag to orbit, right-drag to pan, wheel to zoom.
+
+### Verifying the page
+
+```powershell
+.\.venv\Scripts\python.exe scripts\webapp_ui_check.py --url http://127.0.0.1:8080/
+# add --headed to drive a visible browser on the real GPU
+```
+
+It drives the whole mandated sequence against the running broker (reset → start → completed →
+obstacle 50 → obstacle 20 → resume → clear → start → completed), plus pause, cargo and route
+switching, then records `reports/webapp_ui_evidence.json` and `reports/screenshots/*.png`. It fails on
+any console error, on a missing 3D canvas, on horizontal overflow at 1440×900, or if the WebGL-disabled
+fallback stops being usable. Needs `pip install playwright` and `python -m playwright install chromium`.
 
 What is proven and what is not:
 
-- **Proven:** every payload the page can emit is accepted by the engine, the page's zone options match `DEMO_GRAPH`, and every path the page binds exists in a real state payload — `tests/test_webapp_controls.py` reads these straight out of `webapp/controls.js` via node, so the page and engine cannot drift apart silently. MQTT-over-WebSocket on `8883` delivers retained state (`websocket_transport` in `reports/demo_e2e_evidence.json`).
-- **Not proven:** the page has not been opened in a browser from this session. The vendor bundle is a browser ESM build and refuses to run under Node, so its rendering and the SDK's browser transport are unverified here. Open it once and confirm before demonstrating.
+- **Proven:** every payload the page can emit is accepted by the engine, its zone options match `DEMO_GRAPH`, and every path it binds exists in a real state payload (`tests/test_webapp_controls.py`). Its floor plan, obstacle colour bands, animation rule and route interpolation are pinned to the Python policy and the trained label set (`tests/test_webapp_visual.py`). Both read `webapp/controls.js` through node, so the page and the engine cannot drift apart silently. The page has been opened in a real browser against the real broker and driven through the full sequence with no console errors (`reports/webapp_ui_evidence.json`).
+- **Not proven:** the page has only been driven through Chromium 149 on this machine — Firefox and Safari are untested. Serving via the extension's own **Serve Web App Folder over HTTP** command was not exercised from this session; verification used `python -m http.server` on port 8080, which serves the same static files.
 
 ### Before you start clicking
 
@@ -126,9 +188,11 @@ Suggested bindings once you have confirmed the nodes exist:
 
 `bmi270-input` → `sensor-snapshot`, publishing to `device/<id>/devkit-twin/telemetry` only. The Python service answers with a rate-limited diagnostic string, not inference.
 
-### 3D branch — not available
+### 3D branch — not available on the canvas
 
 `model-select`, `model-viewer` and `scene-output` are in the `scene` category and the Stage 3D pane is disabled in every profile of this build, so the Digital Twin branch cannot be built here at all. Do not describe one as working.
+
+The 3D simulation therefore lives in the local console instead — `webapp/scene.js`, described above. It subscribes to the same retained `cargoshield/cargo-robot-01/state` topic the canvas would have used, so both views show the same engine at the same time.
 
 ### Export
 
