@@ -77,7 +77,7 @@
     "observed_move": true,
     "observed_hold_uncertain": true,
     "completed": true,
-    "elapsed_s": 11.36,
+    "elapsed_s": 11.39,
     "final_progress": 1.0,
     "risk_bands_seen": [
       "high",
@@ -146,8 +146,8 @@
     "malformed_telemetry_burst": {
       "sent": 50,
       "published": 1,
-      "window_s": 1.53,
-      "publishes_per_second": 0.65,
+      "window_s": 1.51,
+      "publishes_per_second": 0.66,
       "within_rate_limit": true
     },
     "valid_telemetry_burst": {
