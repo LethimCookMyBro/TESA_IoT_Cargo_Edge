@@ -156,6 +156,7 @@ function renderRisk(riskMap) {
 
 function render(state) {
   lastStateAt = Date.now();
+  tickAge();
   for (const button of [...pending]) release(button);
 
   for (const [key, path] of Object.entries(DISPLAY_PATHS)) {
