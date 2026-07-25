@@ -1,0 +1,183 @@
+{
+  "broker": "127.0.0.1:1883",
+  "device_id": "cargo-e2e",
+  "state_topic": "cargoshield/cargo-e2e/state",
+  "command_topic": "cargoshield/cargo-e2e/command",
+  "replay_interval_s": 1.0,
+  "demo_sequence_length": 10,
+  "late_subscriber_retained_state": {
+    "received": true,
+    "status": "IDLE",
+    "retain_flag": true
+  },
+  "controls": [
+    {
+      "command": {
+        "action": "set_cargo",
+        "cargo_type": "fragile"
+      },
+      "accepted": true,
+      "status": "IDLE"
+    },
+    {
+      "command": {
+        "action": "set_cargo",
+        "cargo_type": "standard"
+      },
+      "accepted": true,
+      "status": "IDLE"
+    },
+    {
+      "command": {
+        "action": "set_mission",
+        "pickup": "A1",
+        "destination": "C2"
+      },
+      "accepted": true,
+      "status": "IDLE"
+    },
+    {
+      "command": {
+        "action": "set_obstacle",
+        "distance": 50
+      },
+      "accepted": true,
+      "status": "IDLE"
+    },
+    {
+      "command": {
+        "action": "clear_obstacle"
+      },
+      "accepted": true,
+      "status": "IDLE"
+    },
+    {
+      "command": {
+        "action": "pause"
+      },
+      "accepted": true,
+      "status": "PAUSED"
+    },
+    {
+      "command": {
+        "action": "manual_resume"
+      },
+      "accepted": true,
+      "status": "READY"
+    },
+    {
+      "command": {
+        "action": "reset"
+      },
+      "accepted": true,
+      "status": "IDLE"
+    }
+  ],
+  "demo_run": {
+    "observed_move": true,
+    "observed_hold_uncertain": true,
+    "completed": true,
+    "elapsed_s": 12.44,
+    "final_progress": 1.0,
+    "risk_bands_seen": [
+      "high",
+      "low",
+      "medium"
+    ]
+  },
+  "state_paths": {
+    "status": true,
+    "cargo_type": true,
+    "route": true,
+    "obstacle_distance": true,
+    "last.label": true,
+    "last.confidence": true,
+    "last.risk": true,
+    "last.decision.speed_ratio": true,
+    "last.decision.action": true,
+    "last.zone": true,
+    "risk_map": true
+  },
+  "route_consistency": {
+    "windows_observed": 10,
+    "expected_windows": 10,
+    "counted_one_state_per_window": true,
+    "completion_publishes_counted": 0,
+    "distinct_routes_during_replay": 1,
+    "route": [
+      "A1",
+      "A2",
+      "B2",
+      "C2"
+    ],
+    "zones_walked": [
+      "A1",
+      "A1",
+      "A1",
+      "A2",
+      "A2",
+      "B2",
+      "B2",
+      "B2",
+      "C2",
+      "C2"
+    ],
+    "zones_off_published_route": [],
+    "route_immutable": true,
+    "every_zone_on_route": true
+  },
+  "obstacle_contract": {
+    "safe_stop_latched": true,
+    "clear_obstacle_keeps_latch": true,
+    "manual_resume_releases": true,
+    "stopped_action": "SAFE_STOP",
+    "stopped_speed_ratio": 0.0
+  },
+  "safe_stop_inside_replay": {
+    "latched_at_progress": 0.1,
+    "final_status": "READY",
+    "final_progress": 0.1,
+    "progress_did_not_advance": true,
+    "did_not_complete_itself": true,
+    "did_not_claim_movement": true,
+    "fresh_start_completes": true
+  },
+  "malformed_inputs": {
+    "malformed_telemetry_burst": {
+      "sent": 50,
+      "published": 1,
+      "window_s": 1.53,
+      "publishes_per_second": 0.65,
+      "within_rate_limit": true
+    },
+    "valid_telemetry_burst": {
+      "sent": 50,
+      "published": 1,
+      "window_s": 1.52,
+      "publishes_per_second": 0.66,
+      "within_rate_limit": true
+    },
+    "diagnostic_states_published": 1,
+    "both_bursts_within_rate_limit": true,
+    "malformed_commands_sent": 5,
+    "error_states_published": 5,
+    "every_malformed_command_answered": true,
+    "retained_state_is_not_an_error": true
+  },
+  "checks": {
+    "late_subscriber_retained_state": true,
+    "all_controls_accepted": true,
+    "demo_shows_move_and_hold": true,
+    "demo_completed": true,
+    "all_state_paths_present": true,
+    "route_immutable_during_replay": true,
+    "every_zone_on_published_route": true,
+    "one_state_counted_per_dataset_window": true,
+    "obstacle_contract_holds": true,
+    "safe_stop_inside_replay_ends_the_run": true,
+    "malformed_telemetry_throttled": true,
+    "malformed_commands_answered": true,
+    "errors_and_diagnostics_not_retained": true
+  },
+  "passed": true
+}

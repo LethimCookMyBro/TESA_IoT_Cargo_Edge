@@ -1,0 +1,80 @@
+{
+  "paths": {
+    "X_data.npy": "C:\\Users\\User\\Downloads\\arjan_TESA\\dataset\\X_data.npy",
+    "label.npy": "C:\\Users\\User\\Downloads\\arjan_TESA\\dataset\\label.npy",
+    "groups.npy": "C:\\Users\\User\\Downloads\\arjan_TESA\\dataset\\groups.npy",
+    "details.csv": "C:\\Users\\User\\Downloads\\arjan_TESA\\dataset\\details.csv"
+  },
+  "shape": [
+    7626,
+    128,
+    10
+  ],
+  "dtype": "float64",
+  "time_axis": 1,
+  "verified_channel_mapping": {
+    "0-3": "orientation quaternion XYZW",
+    "4-6": "angular velocity XYZ",
+    "7-9": "linear acceleration XYZ"
+  },
+  "baseline_channels": [
+    "gyro_x",
+    "gyro_y",
+    "gyro_z",
+    "linear_accel_x",
+    "linear_accel_y",
+    "linear_accel_z"
+  ],
+  "nan": 0,
+  "inf": 0,
+  "groups": 80,
+  "class_counts": {
+    "hard_tiles_large_space": 303,
+    "soft_pvc": 1176,
+    "soft_tiles": 522,
+    "fine_concrete": 821,
+    "concrete": 1057,
+    "hard_tiles": 576,
+    "carpet": 869,
+    "tiled": 1267,
+    "wood": 1035
+  },
+  "baseline_stats": {
+    "gyro_x": {
+      "min": -2.4033,
+      "max": 3.3966,
+      "mean": 0.00028920883933418576,
+      "std": 0.11613434827153586
+    },
+    "gyro_y": {
+      "min": -1.193,
+      "max": 1.1507,
+      "mean": 0.011005470141746474,
+      "std": 0.08909920127768166
+    },
+    "gyro_z": {
+      "min": -1.4582,
+      "max": 1.3873,
+      "mean": -0.027649163820678106,
+      "std": 0.23163968730793294
+    },
+    "linear_accel_x": {
+      "min": -36.067,
+      "max": 36.797,
+      "mean": 0.12735555511729038,
+      "std": 1.851700787701333
+    },
+    "linear_accel_y": {
+      "min": -121.49,
+      "max": 73.008,
+      "mean": 2.8965360099435666,
+      "std": 2.1175224877579324
+    },
+    "linear_accel_z": {
+      "min": -83.173,
+      "max": 65.839,
+      "mean": -9.362346417762456,
+      "std": 2.8240673785548402
+    }
+  }
+}

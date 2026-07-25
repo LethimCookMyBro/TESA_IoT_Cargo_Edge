@@ -1,0 +1,29 @@
+{
+  "model": "RandomForestClassifier",
+  "input_shape": [
+    128,
+    6
+  ],
+  "channels": [
+    "gyro_x",
+    "gyro_y",
+    "gyro_z",
+    "linear_accel_x",
+    "linear_accel_y",
+    "linear_accel_z"
+  ],
+  "dataset_channel_indices": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "feature_count": 48,
+  "risk_quantiles": {
+    "low_to_medium": 2.4015706793421012,
+    "medium_to_high": 4.856004240256699
+  },
+  "fit_seconds": 1.070073400000183
+}

@@ -1,0 +1,9 @@
+{
+  "macro_f1": 0.515591315657796,
+  "weighted_f1": 0.5448699268972353,
+  "test_samples": 1454,
+  "test_groups": 15,
+  "batch_seconds": 0.10887499999989814,
+  "single_window_ms": 0.07487964236581715,
+  "model_bytes": 53058065
+}
