@@ -65,7 +65,7 @@
     "COMPLETED_second_run": "reports/screenshots/COMPLETED_second_run.png"
   },
   "retained_state_on_open": {
-    "status": "IDLE",
+    "status": "COMPLETED",
     "age": "just now",
     "rendered_before_any_click": true
   },
@@ -85,7 +85,7 @@
     "obstacle": "20 cm \u00b7 stop region"
   },
   "after_clear": {
-    "obstacle": "N/A"
+    "obstacle": "20 cm \u00b7 stop region"
   },
   "cargo_switch": {
     "fragile": "fragile",
@@ -95,10 +95,34 @@
     "nodes": "A2 \u2192 A1 \u2192 B1 \u2192 C1",
     "policy": "stability-first; demo distance and learned zone-risk costs"
   },
-  "fps": "169 fps",
-  "console": {
-    "errors": [],
-    "message_count": 0
+  "laptop_viewport": {
+    "size": "1440x900",
+    "horizontal_overflow_px": 0,
+    "canvas_size": [
+      940,
+      789
+    ],
+    "screenshot": "reports/screenshots/READY_laptop_1440x900.png"
   },
-  "passed": true
+  "keyboard_focus_order": [
+    "cargo",
+    "pickup",
+    "destination",
+    "obstacle",
+    "obstacle-send",
+    "BUTTON",
+    "timeline",
+    "BODY"
+  ],
+  "fps": "178 fps",
+  "console": {
+    "errors": [
+      {
+        "type": "error",
+        "text": "WebSocket is already in CLOSING or CLOSED state."
+      }
+    ],
+    "message_count": 1
+  },
+  "passed": false
 }

@@ -112,6 +112,23 @@ def main() -> None:
                 record["screenshot"] = evidence["screenshots"][shot]
             evidence["steps"].append(record)
 
+        try:
+            run_sequence(page, evidence, step, console)
+        except Exception as exc:  # a failed demo rehearsal is evidence too
+            evidence["failure"] = {"error": f"{type(exc).__name__}: {exc}", "screenshot": snapshot(page, "FAILURE"),
+                                   "timeline": page.inner_text("#timeline")[:2000],
+                                   "console": console.messages[-20:]}
+            evidence["passed"] = False
+        browser.close()
+
+    (ROOT / "reports").mkdir(exist_ok=True)
+    (ROOT / "reports" / "webapp_ui_evidence.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
+    print(json.dumps({k: evidence[k] for k in ("passed", "retained_state_on_open", "webgl", "fps", "console", "screenshots", "failure") if k in evidence}, indent=2))
+    if not evidence["passed"]:
+        raise SystemExit("browser verification failed; see reports/webapp_ui_evidence.json")
+
+
+def run_sequence(page, evidence: dict, step, console: Console) -> None:
         # 2. The mandated demo sequence, every transition decided by the engine.
         # Normalise the mission first so the run is the documented A1 -> C2 standard-cargo demo.
         for selector, value in (("#cargo", "standard"), ("#pickup", "A1"), ("#destination", "C2")):
@@ -160,6 +177,26 @@ def main() -> None:
         step("pause", lambda: page.click('button[data-cmd="pause"]'), "PAUSED")
         step("reset again", lambda: page.click('button[data-cmd="reset"]'), "IDLE")
 
+        # 4. Laptop viewport: the layout must still fit without a sideways scroll.
+        page.set_viewport_size({"width": 1440, "height": 900})
+        page.wait_for_timeout(600)
+        evidence["laptop_viewport"] = {
+            "size": "1440x900",
+            "horizontal_overflow_px": page.evaluate("() => document.documentElement.scrollWidth - document.documentElement.clientWidth"),
+            "canvas_size": page.evaluate("() => { const c = document.getElementById('stage'); return [c.clientWidth, c.clientHeight]; }"),
+            "screenshot": snapshot(page, "READY_laptop_1440x900"),
+        }
+        page.set_viewport_size({"width": 1920, "height": 1080})
+        page.wait_for_timeout(400)
+
+        # 5. Keyboard reachability of the mission controls.
+        page.evaluate("() => document.activeElement?.blur()")
+        focused = []
+        for _ in range(8):
+            page.keyboard.press("Tab")
+            focused.append(page.evaluate("() => document.activeElement?.id || document.activeElement?.tagName"))
+        evidence["keyboard_focus_order"] = focused
+
         evidence["fps"] = page.inner_text("#fps")
         evidence["console"] = {"errors": console.errors, "message_count": len(console.messages)}
         # With a WebGL context available the 3D stage must be the thing on screen, not the fallback.
@@ -168,14 +205,8 @@ def main() -> None:
             and len(evidence["screenshots"]) >= 5
             and evidence["webgl"]["canvas_visible"]
             and not evidence["webgl"]["fallback_shown"]
+            and evidence["laptop_viewport"]["horizontal_overflow_px"] <= 0
         )
-        browser.close()
-
-    (ROOT / "reports").mkdir(exist_ok=True)
-    (ROOT / "reports" / "webapp_ui_evidence.json").write_text(json.dumps(evidence, indent=2), encoding="utf-8")
-    print(json.dumps({k: evidence[k] for k in ("passed", "retained_state_on_open", "webgl", "fps", "console", "screenshots")}, indent=2))
-    if not evidence["passed"]:
-        raise SystemExit("browser verification failed; see reports/webapp_ui_evidence.json")
 
 
 if __name__ == "__main__":
