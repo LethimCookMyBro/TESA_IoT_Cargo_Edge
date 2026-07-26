@@ -24,6 +24,7 @@ SHOTS = ROOT / "reports" / "screenshots"
 
 # Chromium needs a software rasteriser to give a headless page a WebGL context.
 LAUNCH_ARGS = ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+MISSION_COMPLETION_TIMEOUT_S = 90
 
 
 # Emitted by the vendored MQTT SDK when a publish races a WebSocket reconnect. It is transport
@@ -141,7 +142,12 @@ def probe_fleet_page(browser, url: str, api: str) -> dict:
         page.wait_for_function("() => document.getElementById('count-total').textContent !== '—'", timeout=20000)
         # History arrives over the read-only API, which reports its own reachability.
         page.wait_for_function("() => document.getElementById('api-text').textContent !== 'กำลังตรวจสอบ…'", timeout=20000)
-        page.wait_for_timeout(1500)
+        # MQTT supplies the robot selector while HTTP supplies its series. Waiting a fixed delay
+        # raced those two independent callbacks and sometimes captured the placeholder rows.
+        page.wait_for_function(
+            "() => document.querySelectorAll('.series-item').length >= 1",
+            timeout=20000,
+        )
         rows = page.eval_on_selector_all("#robot-rows tr", "nodes => nodes.length")
         page.keyboard.press("Tab")
         first_focus = page.evaluate("() => document.activeElement?.className || document.activeElement?.tagName")
@@ -270,7 +276,8 @@ def run_sequence(page, evidence: dict, step, console: Console) -> None:
             page.wait_for_timeout(400)
         step("reset", lambda: page.click('button[data-cmd="reset"]'), "IDLE")
         step("start", lambda: page.click('button[data-cmd="start"]'), "MOVING", "SLOWING", "HOLDING", shot="MOVING")
-        step("run to completion", lambda: None, "COMPLETED", timeout=40, shot="COMPLETED")
+        step("run to completion", lambda: None, "COMPLETED",
+             timeout=MISSION_COMPLETION_TIMEOUT_S, shot="COMPLETED")
 
         step("start again", lambda: page.click('button[data-cmd="start"]'), "MOVING", "SLOWING", "HOLDING")
         step("obstacle 50 cm", lambda: set_obstacle(page, 50), "SLOWING", shot="SLOW_DOWN")
@@ -309,7 +316,8 @@ def run_sequence(page, evidence: dict, step, console: Console) -> None:
         }
 
         step("start after clearing", lambda: page.click('button[data-cmd="start"]'), "MOVING", "SLOWING", "HOLDING")
-        step("second run completes", lambda: None, "COMPLETED", timeout=40, shot="COMPLETED_second_run")
+        step("second run completes", lambda: None, "COMPLETED",
+             timeout=MISSION_COMPLETION_TIMEOUT_S, shot="COMPLETED_second_run")
 
         # 3. The remaining controls, each answered by the engine over the real broker.
         page.select_option("#cargo", "fragile")

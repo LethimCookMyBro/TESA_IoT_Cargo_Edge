@@ -1,5 +1,5 @@
 {
-  "run_id": "run-1785048115532-e3c5fa51",
+  "run_id": "run-1785053201446-e6a66128",
   "broker": "127.0.0.1:1883",
   "seed": 7,
   "samples_per_robot": 24,
@@ -47,7 +47,7 @@
     "last_error": null
   },
   "database_outage": {
-    "held_for_s": 1.61,
+    "held_for_s": 1.62,
     "samples_decided_before": 19,
     "samples_decided_during_outage": 27,
     "safety_core_kept_deciding": true,
@@ -64,7 +64,7 @@
     },
     "note": "the writer could not reach any database; decisions continued unchanged"
   },
-  "elapsed_s": 2.75,
+  "elapsed_s": 2.77,
   "published": {
     "robot-alpha": 24,
     "robot-bravo": 24,
@@ -159,25 +159,25 @@
         "score": 0.7444905865,
         "observations": 6,
         "surface": "soft_pvc",
-        "updated_ms": 1785048120367
+        "updated_ms": 1785053206287
       },
       "A2": {
         "score": 0.8202788471666667,
         "observations": 6,
         "surface": "tiled",
-        "updated_ms": 1785048120739
+        "updated_ms": 1785053206659
       },
       "B2": {
         "score": 0.8202788471666667,
         "observations": 6,
         "surface": "tiled",
-        "updated_ms": 1785048121113
+        "updated_ms": 1785053207035
       },
       "C2": {
         "score": 0.8202788471666667,
         "observations": 6,
         "surface": "hard_tiles",
-        "updated_ms": 1785048121483
+        "updated_ms": 1785053207409
       }
     },
     "route_planned_for_next_mission": [
@@ -242,10 +242,10 @@
   },
   "latency": {
     "samples": 68,
-    "p50_ms": 0.1586,
-    "p95_ms": 0.4404,
-    "max_ms": 1.6753,
-    "mean_ms": 0.2225,
+    "p50_ms": 0.2764,
+    "p95_ms": 0.5975,
+    "max_ms": 1.9027,
+    "mean_ms": 0.3335,
     "measurement": "local simulator ingest-to-decision, not board performance"
   },
   "fleet_status_counts": {
@@ -256,11 +256,11 @@
   },
   "database_rows_total": {
     "robots": 5,
-    "missions": 26,
-    "telemetry_samples": 538,
-    "model_predictions": 542,
-    "derived_features": 542,
-    "fleet_events": 711,
+    "missions": 34,
+    "telemetry_samples": 620,
+    "model_predictions": 624,
+    "derived_features": 624,
+    "fleet_events": 813,
     "maintenance_findings": 0
   },
   "database_rows_by_robot": {
@@ -269,12 +269,12 @@
     "robot-charlie": 13
   },
   "database_rows_scope": {
-    "run_id": "run-1785048115532-e3c5fa51",
+    "run_id": "run-1785053201446-e6a66128",
     "mission_ids": [
-      "run-1785048115532-e3c5fa51-m1-robot-alpha",
-      "run-1785048115532-e3c5fa51-m1-robot-bravo",
-      "run-1785048115532-e3c5fa51-m1-robot-charlie",
-      "run-1785048115532-e3c5fa51-m2-robot-bravo"
+      "run-1785053201446-e6a66128-m1-robot-alpha",
+      "run-1785053201446-e6a66128-m1-robot-bravo",
+      "run-1785053201446-e6a66128-m1-robot-charlie",
+      "run-1785053201446-e6a66128-m2-robot-bravo"
     ],
     "note": "acceptance evidence includes only telemetry from this invocation"
   },

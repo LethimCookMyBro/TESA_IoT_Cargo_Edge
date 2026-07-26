@@ -87,7 +87,7 @@
   "after_clear": {
     "obstacle": "N/A",
     "status": "READY",
-    "confidence_of_last_window": "0.729",
+    "confidence_of_last_window": "0.742",
     "action": "MOVE"
   },
   "cargo_switch": {
@@ -95,7 +95,7 @@
     "screenshot": "reports/screenshots/FRAGILE_cargo.png"
   },
   "route_switch": {
-    "nodes": "A2 \u2192 A1 \u2192 B1 \u2192 C1",
+    "nodes": "A2 \u2192 B2 \u2192 C2",
     "policy": "stability-first; demo distance and learned zone-risk costs"
   },
   "laptop_viewport": {
@@ -153,7 +153,7 @@
     "simulated_notice_visible": true,
     "zone_rows": 4,
     "event_rows": 50,
-    "mission_rows": 26,
+    "mission_rows": 30,
     "series_charts": 5,
     "export_command": ".\\.venv\\Scripts\\python.exe -m cargo.export --format jsonl",
     "first_tab_stop": "skip-link",

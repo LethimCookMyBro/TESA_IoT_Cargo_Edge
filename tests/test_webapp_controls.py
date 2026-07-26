@@ -70,6 +70,10 @@ class WebappControlsTests(unittest.TestCase):
 
         self.assertEqual(sorted(self.contract["zones"]), sorted(DEMO_GRAPH))
 
+    def test_operator_commands_wait_for_broker_ack(self):
+        source = (WEBAPP / "app.js").read_text(encoding="utf-8")
+        self.assertIn("client.publish(topic.command, payload, { qos: 1 })", source)
+
     def test_every_display_path_exists_in_a_real_state_payload(self):
         client = FakeClient()
         service = CargoMqttService(ROOT, client=client, interval_s=0)

@@ -88,7 +88,9 @@ async function send(name, payload, button) {
   // pressing Stop must not silently do nothing because a ping was missed a moment earlier.
   for (let attempt = 0; attempt < COMMAND_ATTEMPTS; attempt += 1) {
     try {
-      await client.publish(topic.command, payload);
+      // Commands are sparse and must reach the broker; QoS 1 gives publish() a PUBACK to await.
+      // State telemetry stays QoS 0 in the Python service.
+      await client.publish(topic.command, payload, { qos: 1 });
       return;
     } catch (error) {
       if (attempt === COMMAND_ATTEMPTS - 1) {

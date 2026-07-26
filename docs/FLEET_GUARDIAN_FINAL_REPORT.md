@@ -21,7 +21,7 @@ The single-robot CargoShield demo is now a multi-robot Fleet Guardian prototype:
 - the previously unused 1 824-window validation split now selects the confidence-rejection
   threshold, and that choice measurably improves held-out behaviour;
 - a read-only maintenance copilot boundary enforced by a SELECT-only PostgreSQL role;
-- **three flaky verification paths fixed at the root cause**, and one incorrect
+- **nine flaky verification defects fixed at the root cause**, and one incorrect
   Phase 0 finding retracted with evidence.
 
 Two things the goal asked for that are **not** delivered, and why:
@@ -267,7 +267,7 @@ PostgreSQL 16 in Docker on `127.0.0.1:5433`, one `cargo.mqtt_service --device-id
 
 | # | Command | Result |
 | --- | --- | --- |
-| 1 | `python -m pytest -q` | **PASSED — 128 passed, 111 subtests, 3 consecutive runs** (40.82 s / 38.19 s / 37.71 s). Baseline was 58 passed |
+| 1 | `python -m pytest -q` | **PASSED — 129 passed, 111 subtests, 3 consecutive runs** (43.91 s / 45.19 s / 41.91 s). Baseline was 58 passed |
 | 2 | `python -m compileall -q cargo training scripts tests` | **PASSED** — exit 0, 3 consecutive runs |
 | 3 | `python scripts\smoke_mqtt_flow.py --dataset-demo` | **PASSED** — 3 consecutive runs |
 | 4 | `python scripts\demo_e2e_check.py` | **PASSED** — all 14 checks, 3 consecutive runs (was flaky at baseline) |
@@ -285,9 +285,9 @@ reason if the database is unreachable, but on this run the database was reachabl
 
 **Not run:** nothing that was claimed.
 
-### 9.1 Three flaky verification paths, fixed at the root cause
+### 9.1 Nine flaky verification defects, fixed at the root cause
 
-Both were failing intermittently at baseline and both are now deterministic across three runs.
+The failures below were reproduced and repaired at their actual fault boundary.
 
 1. **`scripts/demo_e2e_check.py` — `obstacle_contract_holds` failed ~50 % of runs.**
    Root cause in *production* code: `_replay_dataset` published `COMPLETED` before its thread was
@@ -305,17 +305,40 @@ Both were failing intermittently at baseline and both are now deterministic acro
    enum) on `#status`, and requiring every wait to be satisfied by a state newer than the one
    observed before the action. As a bonus this decouples the harness from the Thai UI labels.
 
-Two further real defects were found *by* those fixes and repaired: a WebSocket reconnect could
-silently swallow an operator command (now retried, bounded), and `NaN` from a faulty sensor could
-not be stored in `jsonb`, failing whole batches (now stored as `null` plus a `_nonfinite` list, so
-the fact is kept).
+3. **A WebSocket reconnect could silently swallow an operator command.**
+   The console now retries the command across the reconnect window with a bounded attempt count.
 
-3. **`HistoryApiTests` intermittently aborted POST/PUT with Windows error 10053.**
+4. **A non-finite sensor value failed a whole PostgreSQL batch.**
+   `NaN` cannot be stored in `jsonb`; it is now stored as `null` plus a `_nonfinite` list so the
+   invalid reading remains visible rather than dropping the batch.
+
+5. **`HistoryApiTests` intermittently aborted POST/PUT with Windows error 10053.**
    The read-only handler returned 405 without consuming the two-byte request body. Windows can
    reset a socket that closes with unread receive data, discarding the response before the client
    sees it. The handler now drains bounded small bodies before replying, closes explicitly, and
    the test server closes and joins cleanly. Repro before the fix failed at request 91/2 000;
    the same 2 000-request probe had zero failures after the fix.
+
+6. **Fleet Intelligence verification sometimes captured only placeholder rows.**
+   The page combines a retained MQTT robot list with HTTP history, but the verifier waited a fixed
+   1.5 seconds after API health instead of waiting for those independent callbacks to finish.
+   It now waits for the first rendered series chart—the same readiness condition asserted later.
+
+7. **A completed replay could miss the UI verifier's fixed 40-second deadline under host load.**
+   One reproduced run published `mission completed` after about 43 seconds, while the page was
+   correctly still `MOVING` at the deadline. Both completion waits now share a 90-second budget;
+   state-edge checks still ensure an old retained `COMPLETED` cannot satisfy them.
+
+8. **A UI command could disappear without an error.**
+   The browser published sparse operator commands at MQTT QoS 0, whose resolved promise only
+   confirmed the socket write. A reproduced `clear_obstacle` click produced neither a console error
+   nor a backend event. Commands now use QoS 1 and wait for the broker's PUBACK; high-rate state
+   telemetry remains QoS 0.
+
+9. **The MQTT evidence script could skip a response that arrived quickly.**
+   It captured its message cursor after publishing a command. A fast backend could answer in that
+   gap, making a real `SAFE_STOPPED` state invisible to the check. Every command now captures the
+   cursor before its QoS 1 publish, and each assertion scans from that exact marker.
 
 ### 9.2 Evidence-integrity closeout
 
@@ -337,7 +360,7 @@ Sensor-ingest-to-safety-decision, 68 samples across 3 robots, from `reports/flee
 
 | p50 | p95 | max | mean |
 | --- | --- | --- | --- |
-| **0.1586 ms** | **0.4404 ms** | 1.6753 ms | 0.2225 ms |
+| **0.2764 ms** | **0.5975 ms** | 1.9027 ms | 0.3335 ms |
 
 Persistence does not materially change it: `test_a_slow_sink_does_not_slow_the_decision_materially`
 runs 200 samples through a guardian whose sink is a real historian queue and asserts p95 < 5 ms;
@@ -354,7 +377,7 @@ writer committed 93 records; all healthy writer phases committed 174 records tot
 table totals remain visible for operations but are explicitly excluded from acceptance.
 
 **Limitations of these numbers.** Single workstation, one broker, three robots, ~50 ms nominal
-sample interval, ~70 decisions per measured run. The `max` of 1.87 ms is a scheduling outlier, not a
+sample interval, ~70 decisions per measured run. The `max` of 1.9027 ms is a scheduling outlier, not a
 worst case under load. No sustained-throughput or many-robot test was run, so no throughput ceiling
 is claimed. Windows `sleep()` overshoot means the simulator's real cadence is looser than nominal —
 which is why `observed_ms` is stamped from the wall clock.
@@ -423,7 +446,7 @@ a static server for `webapp/`, then open `index.html` and `fleet.html`.
    acted-upon windows from 0.574 to 0.721 at 52.8 % coverage on the untouched test split.
 6. The maintenance copilot boundary cannot write: PostgreSQL refuses INSERT, UPDATE, DELETE,
    TRUNCATE and DROP from its role, and the module contains no transport and only literal SELECTs.
-7. Three flaky verification paths were diagnosed to root cause and fixed; the full suite passes
+7. Nine flaky verification defects were diagnosed to root cause and fixed; the full suite passes
    three consecutive times with zero browser console errors.
 8. Exact sensor channels, units, ranges and default publish rates are taken from the installed
    Bitstream Studio 0.1.9 catalog, and the health rules enforce those catalog values.

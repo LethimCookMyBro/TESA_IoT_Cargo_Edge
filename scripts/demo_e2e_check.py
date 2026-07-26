@@ -58,9 +58,10 @@ class Observer:
         if not self.ready.wait(10):
             raise SystemExit("observer did not connect")
 
-    def wait_for(self, predicate, timeout: float = 20.0) -> dict | None:
-        """Match only messages that arrive from this call onward; an earlier step's state is not an answer."""
-        deadline, cursor = time.monotonic() + timeout, len(self.messages)
+    def wait_for(self, predicate, timeout: float = 20.0, *, after: int | None = None) -> dict | None:
+        """Match messages after a cursor captured before the action under test."""
+        deadline = time.monotonic() + timeout
+        cursor = len(self.messages) if after is None else after
         while time.monotonic() < deadline:
             while cursor < len(self.messages):
                 message = self.messages[cursor]
@@ -78,7 +79,7 @@ def retained_snapshot(host: str, port: int, topic: str, client_id: str) -> dict 
     """Connect fresh and report only what the broker replays from its retained store."""
     observer = Observer(host, port, topic, client_id)
     try:
-        return observer.wait_for(lambda message: message["_retain_flag"], timeout=5)
+        return observer.wait_for(lambda message: message["_retain_flag"], timeout=5, after=0)
     finally:
         observer.close()
 
@@ -126,8 +127,10 @@ def main() -> None:
                       "command_topic": service.command_topic, "replay_interval_s": REPLAY_INTERVAL_S,
                       "demo_sequence_length": len(DEMO_SEQUENCE)}
 
-    def command(payload: dict) -> None:
-        engine.publish(service.command_topic, json.dumps(payload))
+    def command(payload: dict) -> int:
+        cursor = len(observer.messages)
+        engine.publish(service.command_topic, json.dumps(payload), qos=1).wait_for_publish(timeout=10)
+        return cursor
 
     try:
         # 1. A dashboard that subscribes after the engine started must still render immediately.
@@ -137,17 +140,17 @@ def main() -> None:
         # 2. Every operator control accepted over the real broker.
         control_results = []
         for payload in CONTROL_COMMANDS:
-            command(payload)
-            reply = observer.wait_for(lambda _message: True, timeout=10)
+            cursor = command(payload)
+            reply = observer.wait_for(lambda _message: True, timeout=10, after=cursor)
             control_results.append({"command": payload, "accepted": bool(reply) and "error" not in reply, "status": reply and reply["status"]})
         evidence["controls"] = control_results
 
         # 3. Full curated demo, then the live obstacle contract on top of it.
-        started, run_start = time.monotonic(), len(observer.messages)
-        command({"action": "start"})
-        moving = observer.wait_for(lambda message: _dig(message, "last.decision.action") == "MOVE")
-        holding = observer.wait_for(lambda message: _dig(message, "last.decision.action") == "HOLD_UNCERTAIN")
-        completed = observer.wait_for(lambda message: message["status"] == "COMPLETED", timeout=30)
+        started = time.monotonic()
+        run_start = command({"action": "start"})
+        moving = observer.wait_for(lambda message: _dig(message, "last.decision.action") == "MOVE", after=run_start)
+        holding = observer.wait_for(lambda message: _dig(message, "last.decision.action") == "HOLD_UNCERTAIN", after=run_start)
+        completed = observer.wait_for(lambda message: message["status"] == "COMPLETED", timeout=30, after=run_start)
         evidence["demo_run"] = {"observed_move": bool(moving), "observed_hold_uncertain": bool(holding),
                                 "completed": bool(completed), "elapsed_s": round(time.monotonic() - started, 2),
                                 "final_progress": completed and _dig(completed, "last.progress"),
@@ -174,14 +177,17 @@ def main() -> None:
                                          "every_zone_on_route": not off_route}
 
         # 4. Obstacle contract over MQTT: stop latches, clearing does not release it, manual resume does.
-        command({"action": "start"})
-        observer.wait_for(lambda message: _dig(message, "last.progress") not in (None, 1.0), timeout=15)
-        command({"action": "set_obstacle", "distance": 20})
-        stopped = observer.wait_for(lambda message: message["status"] == "SAFE_STOPPED")
-        command({"action": "clear_obstacle"})
-        still_stopped = observer.wait_for(lambda message: message["status"] == "SAFE_STOPPED" and message["obstacle_distance"] is None)
-        command({"action": "manual_resume"})
-        released = observer.wait_for(lambda message: message["status"] == "READY")
+        cursor = command({"action": "start"})
+        observer.wait_for(lambda message: _dig(message, "last.progress") not in (None, 1.0), timeout=15, after=cursor)
+        cursor = command({"action": "set_obstacle", "distance": 20})
+        stopped = observer.wait_for(lambda message: message["status"] == "SAFE_STOPPED", after=cursor)
+        cursor = command({"action": "clear_obstacle"})
+        still_stopped = observer.wait_for(
+            lambda message: message["status"] == "SAFE_STOPPED" and message["obstacle_distance"] is None,
+            after=cursor,
+        )
+        cursor = command({"action": "manual_resume"})
+        released = observer.wait_for(lambda message: message["status"] == "READY", after=cursor)
         evidence["obstacle_contract"] = {"safe_stop_latched": bool(stopped), "clear_obstacle_keeps_latch": bool(still_stopped),
                                          "manual_resume_releases": bool(released),
                                          "stopped_action": stopped and _dig(stopped, "last.decision.action"),
@@ -191,8 +197,8 @@ def main() -> None:
         #    afterwards must not resume it or claim the robot is moving. Only Start runs it again.
         command({"action": "reset"})
         command({"action": "set_obstacle", "distance": 20})
-        command({"action": "start"})
-        latched = observer.wait_for(lambda message: message["status"] == "SAFE_STOPPED", timeout=30)
+        cursor = command({"action": "start"})
+        latched = observer.wait_for(lambda message: message["status"] == "SAFE_STOPPED", timeout=30, after=cursor)
         stopped_progress = latched and _dig(latched, "last.progress")
         command({"action": "manual_resume"})
         command({"action": "clear_obstacle"})
@@ -205,8 +211,8 @@ def main() -> None:
             "did_not_complete_itself": after["status"] != "COMPLETED",
             "did_not_claim_movement": after["status"] != "MOVING"}
         command({"action": "clear_obstacle"})
-        command({"action": "start"})
-        restarted = observer.wait_for(lambda message: message["status"] == "COMPLETED", timeout=30)
+        cursor = command({"action": "start"})
+        restarted = observer.wait_for(lambda message: message["status"] == "COMPLETED", timeout=30, after=cursor)
         evidence["safe_stop_inside_replay"]["fresh_start_completes"] = bool(restarted)
 
         # 6. Malformed input: telemetry throttled, commands answered every time, neither retained.
