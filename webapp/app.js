@@ -49,10 +49,12 @@ if (stage) {
 /* ---------------- toasts ---------------- */
 
 function toast(message, bad = false) {
+  const host = $('toasts');
   const node = document.createElement('div');
   node.className = bad ? 'toast bad' : 'toast';
   node.textContent = message;
-  $('toasts').append(node);
+  while (host.children.length >= 4) host.firstElementChild.remove();
+  host.append(node);
   setTimeout(() => node.remove(), bad ? 6000 : 3000);
 }
 

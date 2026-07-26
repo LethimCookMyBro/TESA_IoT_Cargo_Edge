@@ -89,14 +89,24 @@ function sparkline(values, { width = 260, height = 44, tone = 'accent' } = {}) {
   const low = Math.min(...finite);
   const high = Math.max(...finite);
   const span = high - low || 1;
-  const points = finite.map((value, index) => {
-    const x = (index / (finite.length - 1)) * (width - 2) + 1;
+  const segments = [];
+  let points = [];
+  for (const [index, value] of values.entries()) {
+    if (!Number.isFinite(value)) {
+      if (points.length) segments.push(points);
+      points = [];
+      continue;
+    }
+    const x = (index / (values.length - 1)) * (width - 2) + 1;
     const y = height - 1 - ((value - low) / span) * (height - 2);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-  path.setAttribute('points', points.join(' '));
-  svg.append(path);
+    points.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+  if (points.length) segments.push(points);
+  for (const segment of segments) {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    path.setAttribute('points', segment.join(' '));
+    svg.append(path);
+  }
   svg.setAttribute('aria-label', `กราฟ ${finite.length} จุด ต่ำสุด ${low.toFixed(3)} สูงสุด ${high.toFixed(3)}`);
   return svg;
 }

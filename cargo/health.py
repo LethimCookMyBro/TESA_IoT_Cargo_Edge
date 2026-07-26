@@ -201,6 +201,10 @@ class HealthMonitor:
             if limit is None or channel in self.quarantined:
                 continue
             checked.append(channel)
+            if isinstance(raw, bool):
+                self._strike(channel)
+                raise_to(UNSAFE, f"{channel} is not a number: {raw!r}")
+                continue
             try:
                 value = float(raw)
             except (TypeError, ValueError):
@@ -239,9 +243,16 @@ class HealthMonitor:
                             self.dropped, self.duplicates, self.out_of_order)
 
     def _check_temperatures(self, channels: Mapping[str, Any], raise_to) -> None:
-        readings = {name: float(channels[name]) for name in TEMPERATURE_CHANNELS
-                    if name in channels and name not in self.quarantined
-                    and isinstance(channels[name], (int, float)) and isfinite(float(channels[name]))}
+        readings = {}
+        for name in TEMPERATURE_CHANNELS:
+            if name not in channels or name in self.quarantined or isinstance(channels[name], bool):
+                continue
+            try:
+                value = float(channels[name])
+            except (TypeError, ValueError):
+                continue
+            if isfinite(value):
+                readings[name] = value
         if len(readings) < 2:
             return
         spread = max(readings.values()) - min(readings.values())

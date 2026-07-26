@@ -190,7 +190,7 @@ class Historian:
 
     def _write_individually(self, batch: list[dict[str, Any]]) -> bool:
         ok = True
-        for event in batch:
+        for index, event in enumerate(batch):
             try:
                 with self._connection.cursor() as cursor:
                     self._write_batch(cursor, [event])
@@ -202,6 +202,7 @@ class Historian:
                 try:
                     self._connection.rollback()
                 except Exception:
+                    self.failed_rows += len(batch) - index - 1
                     ok = False
                     break
         return ok
@@ -229,10 +230,13 @@ class Historian:
         self._insert(cursor, "derived_features", FEATURE_COLUMNS, features)
         for finding in findings:
             cursor.execute(
-                "INSERT INTO maintenance_findings (robot_id, mission_id, opened_ms, severity, reason, note)"
-                " VALUES (%s, %s, %s, %s, %s, %s)",
-                (finding["robot_id"], self._mission(finding), finding["observed_ms"],
-                 finding.get("severity", "info"), finding.get("reason", ""), finding.get("note")),
+                "INSERT INTO maintenance_findings"
+                " (event_id, robot_id, mission_id, opened_ms, severity, reason, note)"
+                " VALUES (%s, %s, %s, %s, %s, %s, %s)"
+                " ON CONFLICT (event_id) DO NOTHING",
+                (finding["event_id"], finding["robot_id"], self._mission(finding),
+                 finding["observed_ms"], finding.get("severity", "info"),
+                 finding.get("reason", ""), finding.get("note")),
             )
 
     @staticmethod

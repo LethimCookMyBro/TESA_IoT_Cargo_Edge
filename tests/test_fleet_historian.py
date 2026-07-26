@@ -91,6 +91,46 @@ def _seed(robots=("robot-alpha", "robot-bravo", "robot-charlie"), steps=6) -> Hi
 
 
 class HistoryTransportUnitTests(unittest.TestCase):
+    def test_conninfo_quotes_special_characters_without_exposing_them_in_errors(self):
+        from psycopg.conninfo import conninfo_to_dict
+
+        settings = db.Settings("127.0.0.1", 1, "cargo db", "cargo user", "p@ss word'x\\y")
+        parsed = conninfo_to_dict(settings.conninfo)
+        self.assertEqual(parsed["dbname"], settings.database)
+        self.assertEqual(parsed["user"], settings.user)
+        self.assertEqual(parsed["password"], settings.password)
+        ok, reason = db.available(settings)
+        self.assertFalse(ok)
+        self.assertNotIn(settings.password, reason)
+
+    def test_unattempted_rows_are_counted_when_rollback_loses_the_connection(self):
+        class CursorContext:
+            def __enter__(self):
+                return object()
+
+            def __exit__(self, *_args):
+                return False
+
+        class BrokenConnection:
+            def cursor(self):
+                return CursorContext()
+
+            def commit(self):
+                return None
+
+            def rollback(self):
+                raise ConnectionError("connection lost")
+
+        historian = Historian()
+        historian._connection = BrokenConnection()
+
+        def fail(_cursor, _batch):
+            raise ValueError("bad row")
+
+        historian._write_batch = fail
+        self.assertFalse(historian._write_individually([{"id": 1}, {"id": 2}, {"id": 3}]))
+        self.assertEqual(historian.failed_rows, 3)
+
     def test_rejected_write_drains_its_small_body_before_replying(self):
         handler = object.__new__(Handler)
         handler.headers = {"Content-Length": "2"}
@@ -191,6 +231,32 @@ class HistorianWriteTests(unittest.TestCase):
         historian.stop(timeout=5)
         with db.connect(_owner_settings()) as connection:
             rows = connection.execute("SELECT count(*) FROM telemetry_samples").fetchone()[0]
+        self.assertEqual(rows, 1)
+
+    def test_a_duplicate_maintenance_finding_is_idempotent(self):
+        _truncate()
+        finding = {
+            **contracts.envelope(
+                contracts.SCHEMA_EVENT,
+                "maintenance_finding",
+                "robot-01",
+                provenance="SIMULATED",
+                source_mode="test",
+                observed_ms=100,
+            ),
+            "severity": "warning",
+            "reason": "inspect wheels",
+        }
+        historian = Historian(_owner_settings())
+        historian.start()
+        historian.submit(finding)
+        historian.submit(finding)
+        historian.flush(timeout=15)
+        historian.stop(timeout=5)
+        with db.connect(_owner_settings()) as connection:
+            rows = connection.execute(
+                "SELECT count(*) FROM maintenance_findings WHERE robot_id = 'robot-01'"
+            ).fetchone()[0]
         self.assertEqual(rows, 1)
 
     def test_safety_continues_and_drops_are_counted_while_the_database_is_down(self):

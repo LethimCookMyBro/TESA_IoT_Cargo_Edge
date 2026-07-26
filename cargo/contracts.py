@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from collections import deque
+from math import isfinite
 from time import time
 from typing import Any, Mapping
 from uuid import uuid4
@@ -128,6 +129,23 @@ def validate_envelope(payload: Mapping[str, Any]) -> dict[str, Any]:
     seq = payload.get("seq")
     if seq is not None and (not isinstance(seq, int) or isinstance(seq, bool) or seq < 0):
         raise ContractError(f"seq must be a non-negative int or null, got {seq!r}")
+    prediction = payload.get("prediction")
+    if prediction is not None:
+        if not isinstance(prediction, Mapping):
+            raise ContractError("prediction must be a JSON object")
+        for field in ("confidence", "vibration_score"):
+            if field not in prediction:
+                continue
+            value = prediction[field]
+            if (not isinstance(value, (int, float)) or isinstance(value, bool)
+                    or not isfinite(float(value))):
+                raise ContractError(f"prediction.{field} must be a finite number")
+        confidence = prediction.get("confidence")
+        if confidence is not None and not 0 <= float(confidence) <= 1:
+            raise ContractError("prediction.confidence must be between 0 and 1")
+        vibration_risk = prediction.get("vibration_risk")
+        if vibration_risk is not None and vibration_risk not in {"low", "medium", "high"}:
+            raise ContractError("prediction.vibration_risk must be low, medium, or high")
     return dict(payload)
 
 

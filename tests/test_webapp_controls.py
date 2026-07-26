@@ -81,6 +81,10 @@ class WebappControlsTests(unittest.TestCase):
         publish = source.index("client.publish(topic.command, payload, { qos: 1 })")
         self.assertLess(connected_guard, publish)
 
+    def test_operator_toasts_are_bounded(self):
+        source = (WEBAPP / "app.js").read_text(encoding="utf-8")
+        self.assertIn("while (host.children.length >= 4)", source)
+
     def test_operator_command_retry_window_covers_a_full_reconnect(self):
         source = (WEBAPP / "app.js").read_text(encoding="utf-8")
         attempts = int(re.search(r"COMMAND_ATTEMPTS = (\d+)", source).group(1))

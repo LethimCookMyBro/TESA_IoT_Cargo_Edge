@@ -107,6 +107,8 @@ class FleetPlaywrightTests(unittest.TestCase):
         self.context = self.browser.new_context(accept_downloads=True)
         self.page = self.context.new_page()
         self.console_errors = []
+        self.predictions = []
+        self.samples = []
         self.page.on(
             "console",
             lambda message: self.console_errors.append(message.text) if message.type == "error" else None,
@@ -149,7 +151,11 @@ class FleetPlaywrightTests(unittest.TestCase):
         elif path == "/api/copilot":
             payload = {"provider": None, "questions": []}
         elif path in ("/api/predictions", "/api/telemetry"):
-            payload = {"predictions": []} if path.endswith("predictions") else {"samples": []}
+            payload = (
+                {"predictions": self.predictions}
+                if path.endswith("predictions")
+                else {"samples": self.samples}
+            )
         elif path == "/api/events.csv":
             severity = query.get("severity", [None])[0]
             rows = [row for row in EVENTS if not severity or row["severity"] == severity]
@@ -278,6 +284,25 @@ class FleetPlaywrightTests(unittest.TestCase):
         self.assertEqual(len(rows), 45)
         self.screenshot("Fleet_CSV_success_mock")
         self.assertEqual(self.console_errors, [])
+
+    def test_sparkline_breaks_the_line_across_missing_samples(self):
+        self.samples = [
+            {"channels": {"sht40.temperatureC": 40}},
+            {"channels": {"sht40.temperatureC": 30}},
+            {"channels": {}},
+            {"channels": {"sht40.temperatureC": 20}},
+            {"channels": {"sht40.temperatureC": 10}},
+        ]
+        self.open_fleet()
+        self.page.evaluate("""() => {
+          const select = document.querySelector('#series-robot');
+          select.append(new Option('robot-alpha', 'robot-alpha'));
+          select.value = 'robot-alpha';
+          select.dispatchEvent(new Event('change'));
+        }""")
+        temperature = self.page.locator("#series-charts .series-item").nth(2)
+        temperature.locator("polyline").nth(1).wait_for(state="attached")
+        self.assertEqual(temperature.locator("polyline").count(), 2)
 
     def test_empty_error_keyboard_focus_targets_and_responsive_overflow(self):
         self.open_fleet()

@@ -123,6 +123,12 @@ class FleetGuardian:
             self._emit(self._fault_event(None, "fleet_full", str(exc), now_ms))
             return {"accepted": False, "reason": str(exc)}
 
+        channels = payload.get("channels")
+        if not isinstance(channels, Mapping):
+            record.rejected += 1
+            self._emit(self._fault_event(robot_id, "rejected_payload", "channels must be an object", now_ms))
+            return {"accepted": False, "reason": "channels must be an object", "robot_id": robot_id}
+
         verdict = self.gate.classify(robot_id, seq=envelope.get("seq"),
                                      observed_ms=envelope["observed_ms"], event_id=envelope["event_id"])
         if verdict != "accept":
@@ -131,12 +137,6 @@ class FleetGuardian:
             self._emit(self._fault_event(robot_id, verdict, f"{verdict} sample seq={envelope.get('seq')}", now_ms))
             # A rejected sample must not extend a rolling window or move a decision.
             return {"accepted": False, "reason": verdict, "robot_id": robot_id}
-
-        channels = payload.get("channels")
-        if not isinstance(channels, Mapping):
-            record.rejected += 1
-            self._emit(self._fault_event(robot_id, "rejected_payload", "channels must be an object", now_ms))
-            return {"accepted": False, "reason": "channels must be an object", "robot_id": robot_id}
 
         record.samples += 1
         record.last_seen_ms = envelope["received_ms"]

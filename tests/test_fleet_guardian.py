@@ -145,6 +145,17 @@ class HealthRuleTests(unittest.TestCase):
         self.assertEqual(report.state, DEGRADED)
         self.assertTrue(any("disagree" in reason for reason in report.reasons))
 
+    def test_numeric_temperature_strings_still_get_cross_checked(self):
+        report = self.monitor().observe({"sht40.temperatureC": "20", "bmi270.temperatureC": "60"},
+                                        observed_ms=1, now_ms=1)
+        self.assertEqual(report.state, DEGRADED)
+        self.assertTrue(any("disagree" in reason for reason in report.reasons))
+
+    def test_boolean_sensor_value_is_not_accepted_as_a_number(self):
+        report = self.monitor().observe({"sht40.temperatureC": True}, observed_ms=1, now_ms=1)
+        self.assertEqual(report.state, UNSAFE)
+        self.assertTrue(any("not a number" in reason for reason in report.reasons))
+
     def test_quaternion_and_magnetic_sanity(self):
         bad_quat = dict(zip(("bmi270.quatW", "bmi270.quatX", "bmi270.quatY", "bmi270.quatZ"), (0.5, 0, 0, 0)))
         good_quat = dict(zip(("bmi270.quatW", "bmi270.quatX", "bmi270.quatY", "bmi270.quatZ"), (1.0, 0, 0, 0)))
@@ -274,6 +285,28 @@ class FleetIngestTests(unittest.TestCase):
         self.assertEqual(fleet.robots, {})
         broken = {**sample("robot-01", seq=1, observed_ms=1, channels={}), "channels": "not-a-map"}
         self.assertFalse(fleet.ingest(broken, now_ms=1)["accepted"])
+
+    def test_malformed_prediction_is_refused_without_raising(self):
+        for prediction in (
+            {"confidence": "high"},
+            {"confidence": True},
+            {"confidence": 1.1},
+            {"vibration_risk": "extreme"},
+            "not-an-object",
+        ):
+            with self.subTest(prediction=prediction):
+                payload = sample("robot-01", seq=1, observed_ms=1, channels=GOOD)
+                payload["prediction"] = prediction
+                result = self.guardian().ingest(payload, now_ms=1)
+                self.assertFalse(result["accepted"])
+
+    def test_invalid_channels_do_not_consume_the_sequence_number(self):
+        fleet = self.guardian()
+        broken = sample("robot-01", seq=7, observed_ms=7, channels=GOOD)
+        broken["channels"] = "not-an-object"
+        self.assertFalse(fleet.ingest(broken, now_ms=7)["accepted"])
+        retry = fleet.ingest(sample("robot-01", seq=7, observed_ms=7, channels=GOOD), now_ms=7)
+        self.assertTrue(retry["accepted"])
 
     def test_duplicate_and_out_of_order_samples_do_not_move_a_decision(self):
         fleet = self.guardian()

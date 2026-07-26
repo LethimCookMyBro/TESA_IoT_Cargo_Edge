@@ -23,8 +23,15 @@ class Settings:
 
     @property
     def conninfo(self) -> str:
-        return (f"host={self.host} port={self.port} dbname={self.database} "
-                f"user={self.user} password={self.password}")
+        from psycopg.conninfo import make_conninfo
+
+        return make_conninfo(
+            host=self.host,
+            port=self.port,
+            dbname=self.database,
+            user=self.user,
+            password=self.password,
+        )
 
     def redacted(self) -> str:
         """Safe to log or return from an API: identifies the database without leaking the password."""

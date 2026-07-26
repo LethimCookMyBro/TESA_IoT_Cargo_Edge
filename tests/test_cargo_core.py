@@ -1,5 +1,6 @@
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from cargo.controller import MissionController
 from cargo.decision_engine import CargoPolicy, decide
@@ -8,6 +9,14 @@ from cargo.routing import DEMO_GRAPH, choose_route
 
 
 class CargoCoreTests(unittest.TestCase):
+    def test_event_timestamps_remain_ordered_when_the_clock_value_repeats(self):
+        with patch("cargo.controller.time", return_value=123.456):
+            controller = MissionController(Path("."))
+            controller._log("first")
+            controller._log("second")
+        timestamps = [event["timestamp_ms"] for event in controller.events]
+        self.assertEqual(timestamps, sorted(set(timestamps)))
+
     def test_fragile_prefers_stable_route_after_risk_observation(self):
         risks = ZoneRiskMap()
         for _ in range(4):

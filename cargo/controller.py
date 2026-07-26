@@ -30,7 +30,11 @@ class MissionController:
         self._log("app initialized")
 
     def _log(self, text: str) -> None:
-        self.events.append({"timestamp_ms": int(time() * 1000), "message": text})
+        timestamp_ms = max(
+            int(time() * 1000),
+            self.events[-1]["timestamp_ms"] + 1 if self.events else 0,
+        )
+        self.events.append({"timestamp_ms": timestamp_ms, "message": text})
 
     def _model(self) -> SurfaceClassifier:
         if self._classifier is None: self._classifier = SurfaceClassifier(self.root / "models")
