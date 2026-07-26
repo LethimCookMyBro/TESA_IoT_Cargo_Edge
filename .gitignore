@@ -6,7 +6,10 @@ htmlcov/
 .env
 .env.*
 !.env.example
-.cargoshield-demo.pid
+
+# Dataset slices written by `python -m cargo.export`; the manifests describe them, so the bytes
+# themselves do not belong in the repository.
+reports/exports/
 
 # Python local/generated files
 __pycache__/

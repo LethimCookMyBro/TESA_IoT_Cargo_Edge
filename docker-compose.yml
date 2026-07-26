@@ -1,0 +1,29 @@
+# Local-network-only PostgreSQL for the CargoShield fleet historian.
+#
+#   docker compose up -d
+#   .\.venv\Scripts\python.exe -m cargo.migrate
+#
+# Bound to 127.0.0.1 on purpose: the historian is a private-network service and must not be
+# reachable from outside this machine. Credentials come from the environment (see .env.example);
+# the defaults below exist only so a local demo starts with one command.
+services:
+  cargoshield-db:
+    image: postgres:16-alpine
+    container_name: cargoshield-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${CARGOSHIELD_PG_DATABASE:-cargoshield}
+      POSTGRES_USER: ${CARGOSHIELD_PG_USER:-cargoshield}
+      POSTGRES_PASSWORD: ${CARGOSHIELD_PG_PASSWORD:-cargoshield-local-dev}
+    ports:
+      - "127.0.0.1:${CARGOSHIELD_PG_PORT:-5433}:5432"
+    volumes:
+      - cargoshield-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CARGOSHIELD_PG_USER:-cargoshield} -d ${CARGOSHIELD_PG_DATABASE:-cargoshield}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  cargoshield-pgdata:
