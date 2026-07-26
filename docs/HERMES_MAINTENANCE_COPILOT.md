@@ -11,7 +11,8 @@ What was actually checked on this workstation, so the claim is precise:
 
 | Check | Result |
 | --- | --- |
-| Reference to Hermes anywhere in this repository's code or configuration | none — only this document and prose in the READMEs |
+| Hermes client, endpoint, credential, process launcher, or tool configuration in the repository | none |
+| References to Hermes in code | boundary/status text only in `cargo/maintenance.py`, `cargo/history_api.py`, and `webapp/`; none calls Hermes |
 | Hermes endpoint configured for CargoShield | none |
 | Hermes process listening on any port | none |
 | `hermes` executable present on the workstation | yes — `%LOCALAPPDATA%\hermes\hermes-agent\venv\Scripts\hermes.exe` |
@@ -108,7 +109,7 @@ Do this only after Phases 0–6 pass independently, which they do as of
 
 Hermes latency is **not** part of the synchronous safety budget. By the time anything reads this
 boundary, the deterministic Safety Core has already decided and acted — measured at
-p50 0.1574 ms / p95 0.3140 ms ingest-to-decision in the latest local simulator evidence.
+p50 0.291 ms / p95 0.4875 ms ingest-to-decision in the latest local simulator evidence.
 Explanations may arrive
 seconds later without any safety consequence.
 

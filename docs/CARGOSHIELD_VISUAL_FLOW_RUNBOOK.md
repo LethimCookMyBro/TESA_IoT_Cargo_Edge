@@ -58,7 +58,7 @@ Split the job accordingly:
 
 | Job | Where | Status |
 |---|---|---|
-| Show current replay state | Sensor Studio flow: an MQTT subscriber into display nodes from the enabled `connectivity`/`output` categories | to be built and confirmed in the UI |
+| Show current replay state | Sensor Studio flow: `mqtt-subscriber` → `message-viewer` | manually verified in the UI; exported preset is not checked in |
 | Send operator commands | `webapp/`, a local page using the extension's own bundled Live-Data SDK over MQTT-over-WebSocket | built and driven in a browser; contract covered by `tests/test_webapp_controls.py` |
 | Show the mission in 3D | `webapp/scene.js`, a local Three.js warehouse fed by the same retained state | built and driven in a browser; evidence in `reports/webapp_ui_evidence.json` |
 
@@ -205,7 +205,10 @@ Use the Studio's own Export command and save to `visual-flow/cargoshield-edge.tr
 3. Mid-run send `{ "action": "pause" }`; progress freezes. Send `{ "action": "manual_resume" }` to continue the same run.
 4. Mid-run send `{ "action": "set_obstacle", "distance": 50 }` for `SLOWING`, then `20` for `SAFE_STOPPED`. The safe stop latches and ends that run at the instant it is raised — whether the operator caused it or a replayed window did. `{ "action": "clear_obstacle" }` does **not** release the latch; only `{ "action": "manual_resume" }` does, and the operator then presses **Start** to run again. Progress stays frozen where it stopped, and the mission returns to `READY` rather than claiming `MOVING`, because nothing is stepping windows. Restarting while the obstacle is still inside the stop region latches again instead of driving through it.
 5. After a run has ended (`COMPLETED`), the obstacle controls only record `obstacle_distance`; no action is recomputed from the finished run's inference.
-6. Verify Digital Twin/dashboard reception by checking that the `mqtt-subscriber` state message updates the bound dashboard displays. A 3D scene is optional until an actual model binding has been configured and observed.
+6. Verify the optional Sensor Studio **state viewer** by checking that the `mqtt-subscriber` message
+   reaches `message-viewer` or another output node that is visibly available in the Library. Do not
+   claim a Studio Dashboard or Digital Twin: both are disabled in this installed build. The working
+   3D visualization is `webapp/scene.js`.
 
 ## BMI270 later
 

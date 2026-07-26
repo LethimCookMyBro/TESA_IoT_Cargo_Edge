@@ -5,7 +5,9 @@ Verified on 2026-07-25 from the bundled `vsix/bitstream-studio-0.1.9.vsix`, the 
 ## Editor and persistence
 
 - The visual editor is **Sensor Studio**. The active command is `bitstream-studio.openBitstreamSensorStudio`; in 0.1.9 its palette title is **Open Bitstream Studio (Sensor Studio tab)**.
-- A real Studio panel was opened during inspection. The same-day persisted workbench state records its `library`, `assets`, `flow`, and `inspector` layout. The captured panel did not render a flow canvas, so no graph screenshot is presented as proof.
+- A manual `mqtt-subscriber` → `message-viewer` flow was built in the real Studio panel and received
+  the retained `cargoshield/cargo-robot-01/state` message. This confirms the minimal state-viewer
+  path on that workstation; it does not prove any disabled Dashboard or Stage feature.
 - Sensor Studio auto-saves and can export/import a JSON graph. An embedded 0.1.9 preset proves the format marker is `trn-flow-preset`; it includes `document.nodes`, `document.edges`, `rootNodes`, and `rootEdges`. A generated flow must be created and exported through the UI; this repository intentionally does **not** hand-author a `.trn-flow-preset.json`.
 
 ## Release-profile gating — read this before naming any node
@@ -59,5 +61,7 @@ The 0.1.12 catalog additionally exposes BMI270 `accel`, `gyro`, and `euler` as `
 - No custom-node, plugin-node, or Script node API was found.
 - No manually fabricated flow JSON is supplied.
 - A live Digital Twin model binding and a Sensor Studio canvas screenshot were not independently verified in this session.
-- **No flow has been built or run in the 0.1.9 UI by this repository.** The gating table above comes from the shipped profile JSON, not from the palette. Every node named as usable still needs one look at the Library before it is wired, and no claim about a working flow may be made until it is seen running.
+- The minimal `mqtt-subscriber` → `message-viewer` path was manually verified in the 0.1.9 UI, but
+  no exported `.trn-flow-preset.json` is checked in. Other nodes listed as reachable come from the
+  shipped profile and bundle audit and still require confirmation in the Library before use.
 - Per-node palette categories **were** read out of the webview bundle during the Fleet Guardian audit by matching `{id:"…",category:"…",title:"…"}` records in `out/webview/index.js`. That is how the constants row above was corrected: scalar and boolean literals live in `utility` (enabled), not in `generator`. The enabled `sensor` category contains 20 nodes, including per-signal tap nodes and `devkit-pot-tap-1..4` / `devkit-btn-tap-0..4`, not the 4 listed earlier in this file.

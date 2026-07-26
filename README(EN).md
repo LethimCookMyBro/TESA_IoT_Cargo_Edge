@@ -19,6 +19,18 @@ input is uncertain or unsafe.
 > `SIMULATED`. Nothing in this repository is a live board measurement, real robot location, or
 > SLAM output, and the Three.js scene does not represent physical motion.
 
+## Video overview (Thai narration, ~72s)
+
+A walkthrough of what CargoShield AI is and how it works, with Thai voice narration
+(synthesized neural TTS), cut from real screenshots of the running system
+(`reports/screenshots/after/`) in mission order — not a mock-up animation. On-screen
+captions stay bilingual (English + Thai).
+
+[![Open the CargoShield AI overview video](reports/screenshots/after/IDLE.png)](reports/media/cargoshield_overview.mp4)
+
+Click the image to open the video, or
+[download the MP4 directly](reports/media/cargoshield_overview.mp4).
+
 ## The problem
 
 Cargo protection introduces risks that ordinary navigation does not see:
@@ -173,7 +185,9 @@ docker compose up -d
 .\.venv\Scripts\python.exe -m cargo.db
 ```
 
-Connection settings come from the environment; copy `.env.example` to `.env` to override them.
+Docker Compose loads `.env` automatically, so copy `.env.example` to `.env` when overriding its
+database settings. Python commands read the process environment directly and do not load `.env`;
+set the `CARGOSHIELD_PG_*` variables in PowerShell when running Python outside Compose.
 
 ### 3. Run
 
@@ -230,17 +244,17 @@ removed mid-run to prove that the Safety Core keeps deciding. Evidence is writte
 .\.venv\Scripts\python.exe -m pip_audit -r requirements.txt
 ```
 
-The latest results recorded in this checkout are **165 tests + 169 subtests**, MQTT E2E **14/14**,
-Fleet Scenario **12/12**, browser verification with no console errors, and no known
-vulnerabilities reported by `pip-audit`. Every latency number is from the local simulator, not
-board performance.
+Revalidation on commit `6a9153d` passed **177 tests + 174 subtests**, `compileall`, and
+`pip-audit` with no known vulnerabilities. The latest checked-in end-to-end evidence records
+MQTT E2E **14/14**, Fleet Scenario **12/12**, and browser verification with no console errors.
+Every latency number is from the local simulator, not board performance.
 
 Browser evidence covers `IDLE`, `MOVING`, `HOLD_UNCERTAIN`, `SLOW_DOWN`, `SAFE_STOPPED`,
 `COMPLETED`, Overview/Follow/Robot POV cameras, Fleet Guardian, the Maintenance Assistant,
 1920×1080, 1440×900, 1280×720, an effective 200% zoom viewport, and the no-WebGL and
 reduced-motion fallbacks. Before/after images are in `reports/screenshots/before/` and
-`reports/screenshots/after/`. The latest GPU run measured **172–181 fps (median 180)** on an
-RTX 4050. This is a web-rendering figure, never board inference performance.
+`reports/screenshots/after/`. The latest browser evidence records **180 fps (the median of five
+samples)** on an RTX 4050. This is a web-rendering figure, never board inference performance.
 
 Safety Events and Mission History paginate independently with at most 20 rows per page. Event
 filters reset only the event page. CSV downloads use the active filter, fixed column order,
@@ -269,3 +283,4 @@ See [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md) for the complete li
 | [`docs/HARDWARE_EXPANSION_MATRIX.md`](docs/HARDWARE_EXPANSION_MATRIX.md) | Evidence required before camera, microphone, range, or motor expansion |
 | [`docs/HERMES_MAINTENANCE_COPILOT.md`](docs/HERMES_MAINTENANCE_COPILOT.md) | Read-only copilot boundary |
 | [`docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md`](docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md) | MQTT, Bitstream Sensor Studio, and build limits |
+| [`แนวทางพัฒนาต่อ.md`](แนวทางพัฒนาต่อ.md) | Suggested next work, robot-arm concept, and optional Hermes Agent boundary |

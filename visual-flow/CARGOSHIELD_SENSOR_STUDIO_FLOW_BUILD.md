@@ -10,7 +10,7 @@ Start `cargo.mqtt_service` first. It makes the Python CargoShield engine the sol
 |---|---|---|
 | Studio → Python | `cargoshield/cargo-robot-01/command` | `{"action":"start"}`; `pause`; `reset`; `manual_resume`; `clear_obstacle`; `{"action":"set_cargo","cargo_type":"standard"}` or `fragile`; `{"action":"set_obstacle","distance":20}`; `{"action":"set_mission","pickup":"A1","destination":"C2"}` |
 | Python → Studio | `cargoshield/cargo-robot-01/state` | `cargoshield.state.v1` JSON emitted by `CargoMqttService.publish_state()` |
-| DevKit → Python | `device/+/devkit-twin/telemetry` | Existing Bitstream JSON; currently diagnostic-only until BMI270 field mapping is verified |
+| Optional diagnostic → Python | `device/+/devkit-twin/telemetry` | CargoShield-defined diagnostic topic; no Bitstream payload schema is claimed and no inference is performed |
 
 ## Verified state field paths
 
@@ -56,7 +56,9 @@ So the canvas here is a **state display**, not a control surface. Operator comma
 2. **Feedback:** bind returned `risk_map` to `message-viewer`; it is the engine's learned zone-risk that feeds later route cost.
 3. **IMU diagnostic (optional):** `bmi270-input` → `sensor-snapshot` → `json-pack` → `mqtt-publisher` to `device/<id>/devkit-twin/telemetry`. The service answers with a rate-limited diagnostic string, never inference.
 
-Confirm every node above in the 0.1.9 Library before wiring it. This sheet lists identifiers found in the bundle plus the categories the profile enables; it does not claim any of them has been seen on the canvas.
+`mqtt-subscriber` and `message-viewer` were manually confirmed on the 0.1.9 canvas and received the
+retained state. Confirm every other node above in the Library before wiring it; those identifiers
+come from the bundle and enabled profile categories, not a saved flow artifact.
 
 ## Branches that are not possible in this build
 

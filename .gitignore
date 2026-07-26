@@ -24,3 +24,6 @@ venv/
 # Local editor / tooling
 .idea/
 .vscode/
+.agents/
+.claude/
+skills-lock.json

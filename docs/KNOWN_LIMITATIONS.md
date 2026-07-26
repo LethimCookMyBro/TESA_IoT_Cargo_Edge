@@ -25,6 +25,6 @@
   no Hermes endpoint or tool contract has been proven. Do not describe the integration as active.
 - CSV endpoints intentionally cap a single export at 5,000 rows and do not stream arbitrarily
   large history. Use narrower filters for larger datasets.
-- Headless SwiftShader performance is highly load-dependent; the headed GPU verification measured
-  172-181 fps (median 180) on an RTX 4050. These figures measure web rendering on one workstation
-  and say nothing about inference performance on the target board.
+- Headless SwiftShader performance is highly load-dependent; the latest headed GPU evidence records
+  180 fps (median of five samples) on an RTX 4050. This measures web rendering on one workstation
+  and says nothing about inference performance on the target board.

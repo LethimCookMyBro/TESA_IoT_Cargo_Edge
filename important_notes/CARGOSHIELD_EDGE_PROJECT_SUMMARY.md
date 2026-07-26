@@ -1,8 +1,9 @@
-# CargoShield Edge — สรุปสถานะโปรเจกต์
+# CargoShield AI — สรุปสถานะโปรเจกต์
 
 ## โปรเจกต์นี้กำลังทำอะไร
 
-**CargoShield Edge** คือระบบ AI สำหรับหุ่นยนต์บริการที่ขนส่งสินค้าในคลังสินค้า ห้าง โรงพยาบาล หรือโรงงาน
+**CargoShield AI** คือระบบ AI สำหรับหุ่นยนต์บริการที่ขนส่งสินค้าในคลังสินค้า ห้าง โรงพยาบาล หรือโรงงาน
+ชื่อ `CargoShield Edge` ในเอกสารหรือ artifact รุ่นเก่าหมายถึง prototype เดียวกัน
 
 แนวคิดหลักคือ:
 
@@ -16,7 +17,7 @@
 - เลือกเส้นทางที่เหมาะสม
 - จดจำพื้นที่เสี่ยง
 - ชะลอ หยุดรอ หรือหยุดฉุกเฉิน
-- แสดงผลผ่าน 3D Dataset Replay Console และ Fleet Intelligence ใน `webapp/` *(เสร็จแล้ว)*
+- แสดงผลผ่าน Mission Protection Console และ Fleet Guardian ใน `webapp/` *(เสร็จแล้ว)*
   พร้อมรองรับ Sensor Studio state viewer แบบเสริม
 
 ---
@@ -24,27 +25,28 @@
 ## สถาปัตยกรรมระบบ
 
 ```text
-ข้อมูล IMU หรือ Dataset Replay
+DATASET / SIMULATED telemetry
             ↓
-Python CargoShield Engine
-- AI จำแนกพื้นผิว
-- ประเมิน vibration risk
-- เลือก cargo policy
-- คำนวณความเร็ว
-- วางแผนเส้นทาง
-- อัปเดต zone risk map
-- ตัดสินใจ HOLD / SLOW DOWN / SAFE STOP
-            ↓
-Local MQTT Broker
-127.0.0.1  TCP 1883 / WebSocket 8883
-            ↓                    ↓
-Bitstream Sensor Studio      webapp/ (3D Operator Console)
-- Visual Flow (subscriber)   - Controls ทุกปุ่ม
-- Display nodes              - Telemetry panels
-                             - ฉากคลังสินค้า Three.js
+Python CargoShield services
+- Surface AI + confidence gate
+- Cargo-aware Safety Core
+- Route Risk Memory
+- Multi-robot health / isolation
+       ├──────── MQTT state/events ────────┐
+       │                                   │
+       │                                   ├─► webapp/index.html
+       │                                   │   Mission Protection + Three.js
+       │                                   └─► Sensor Studio state viewer (เสริม)
+       │
+       └─ bounded historian queue ─► PostgreSQL
+                                      ↓
+                               History API :8099
+                                      ↓
+                         Fleet Guardian + Maintenance Assistant
 ```
 
-Python เป็นสมองหลัก ปลายทางฝั่งแสดงผลมีสองทาง
+Python เป็นสมองหลัก ส่วนหน้าเว็บ, Sensor Studio state viewer, PostgreSQL และ Maintenance Assistant
+อยู่นอก synchronous safety path และไม่มีสิทธิ์เปลี่ยนคำตัดสินของ Safety Core
 
 **ฉาก 3D เป็น visualization เท่านั้น** ทุกค่าที่วาดบนจอ ทั้งสถานะ การตัดสินใจ speed ratio คลาสพื้นผิว
 zone risk และเส้นทาง อ่านมาจาก state ที่ Python publish ทั้งหมด ไม่มีโค้ดใน `webapp/` ที่ทำ inference
@@ -85,7 +87,8 @@ Three.js 0.180.0 (MIT) อยู่ใน `webapp/vendor/three/` ทั้งห
 
 ### MQTT Topics
 
-คำสั่งจาก Sensor Studio ไป Python:
+คำสั่งจาก `webapp/index.html` ไป Python
+(หรือจาก Sensor Studio ในอนาคตหาก build เปิด input widgets):
 
 ```text
 cargoshield/cargo-robot-01/command
@@ -271,13 +274,19 @@ speed_ratio = 0.0
 - Obstacle controls ตอบสนองทันทีต่อ input จำลองตาม contract ด้านบนแล้ว
 - Replay เป็นชุดสาธิต 10 หน้าต่าง ~10 วินาที แสดงครบทั้ง MOVE, HOLD_UNCERTAIN และความต่างของ cargo policy
 - ตรวจ end-to-end ผ่าน broker จริงด้วย `scripts/demo_e2e_check.py` เก็บหลักฐานไว้ที่ `reports/demo_e2e_evidence.json` (14/14)
-- **3D Operator Console ใน `webapp/` เสร็จแล้ว** ฉากคลังสินค้า Three.js แบบ procedural, โซน `A1..C2` จาก `DEMO_GRAPH` จริง, เส้นทางจาก `route.nodes`, heat overlay จาก `risk_map`, AGV พร้อมล้อและกล่องสินค้า (standard/fragile ต่างกันชัดเจน), obstacle marker ตามระยะจริง, orbit/pan/zoom + Reset camera
+- **3D Operator Console ใน `webapp/` เสร็จแล้ว** ฉากคลังสินค้า Three.js แบบ procedural,
+  โซน `A1..C2` จาก `DEMO_GRAPH`, เส้นทางจาก `route.nodes`, heat overlay จาก `risk_map`,
+  AGV พร้อมสินค้า standard/fragile, obstacle marker, กล้อง Overview / Follow / Robot POV,
+  orbit/pan/zoom, no-WebGL fallback และ reduced-motion
+- **Fleet Guardian เสร็จแล้ว** แสดงสถานะหลายหุ่นยนต์, ประวัติจาก PostgreSQL, ตาราง
+  Safety Events และ Mission History แบบแยกหน้าไม่เกิน 20 แถว, CSV ตามตัวกรอง และ
+  Maintenance Assistant แบบ deterministic read-only
 - เปิดหน้าเว็บจริงในเบราว์เซอร์และทดสอบครบทั้งลำดับสาธิตกับ broker จริงแล้ว ไม่มี console error เก็บหลักฐานที่ `reports/webapp_ui_evidence.json` และภาพที่ `reports/screenshots/`
 - Three.js 0.180.0 (MIT) เก็บไว้ในเครื่องที่ `webapp/vendor/three/` ไม่ใช้ CDN ไม่มี asset ภายนอก
 - ผลทดสอบล่าสุด:
 
 ```text
-131 passed, 111 subtests
+177 passed, 174 subtests
 ```
 
 ---
@@ -332,10 +341,12 @@ State ปกติถูก retain ส่วน `error` และ `source_diagno
 
 ---
 
-## งานเสริมที่ยังเหลือใน Sensor Studio
+## Sensor Studio state viewer
 
-ระบบหลักและหน้าเว็บสาธิตทำงานแล้ว งานที่ยังเหลือใน Sensor Studio เป็น state viewer เสริม
-ไม่ใช่ blocker ของ Dataset Replay Console หรือ Fleet Intelligence
+ระบบหลักและหน้าเว็บสาธิตทำงานแล้ว และเคยต่อ flow ขั้นต่ำ
+`MQTT Subscriber → Message Viewer` ใน UI จริงจนเห็น retained state แล้ว
+สิ่งที่ยังไม่มีคือไฟล์ preset ที่ export จาก Studio งานนี้ไม่ใช่ blocker ของ
+Mission Protection Console หรือ Fleet Guardian
 
 ### Flow ขั้นต่ำ
 
@@ -429,7 +440,8 @@ visual-flow/cargoshield-edge.trn-flow-preset.json
 - ยังไม่มี ToF หรือ Ultrasonic Sensor จริง
 - ลำดับ 10 หน้าต่างในรอบสาธิตเป็น curated sequence ที่เลือกไว้ล่วงหน้า ไม่ใช่การสุ่มหรือการวิ่งจริงบนพื้น
 - Zone ที่เดินระหว่างสาธิตมาจาก route ที่วางไว้ตอนเริ่ม ไม่ได้มาจากตำแหน่งจริงของหุ่นยนต์
-- Visual Flow ยังไม่ได้สร้างและยังไม่เคยเห็นทำงานจริง จึงยังอ้างไม่ได้
+- Visual Flow ขั้นต่ำ `MQTT Subscriber → Message Viewer` เคยทำงานใน UI จริงแล้ว
+  แต่ยังไม่มีไฟล์ preset ที่ export และเก็บใน repository
 - Digital Twin / 3D **บน canvas ของ Sensor Studio** สร้างใน build นี้ไม่ได้เลย เพราะหมวด `scene` และ Stage 3D ถูกปิดในทุก profile ฉาก 3D จึงอยู่ใน `webapp/scene.js` แทน ซึ่ง subscribe topic เดียวกัน
 - ฉาก 3D เป็นการจำลองเชิงภาพ ไม่ใช่ตำแหน่งจริงของหุ่นยนต์ พิกัดโซนบนแผนผังเป็นเลย์เอาต์ที่วางเองให้ตรงกับเส้นเชื่อมของ `DEMO_GRAPH` ไม่ใช่พิกัดคลังสินค้าจริง และการเคลื่อนที่ระหว่างโซนเป็น interpolation เชิงภาพจาก `last.zone` กับ `last.progress` เท่านั้น
 - ทดสอบเบราว์เซอร์แล้วเฉพาะ Chromium 149 บนเครื่องนี้ ยังไม่ได้ลอง Firefox หรือ Safari และยังไม่ได้เปิดผ่านคำสั่ง **Serve Web App Folder over HTTP** ของส่วนขยาย (ใช้ `python -m http.server` ซึ่งเสิร์ฟไฟล์ static ชุดเดียวกัน)
@@ -445,7 +457,7 @@ visual-flow/cargoshield-edge.trn-flow-preset.json
 
 ## จุดเด่นของโปรเจกต์
 
-CargoShield Edge ไม่ได้เป็นเพียงระบบตรวจสิ่งกีดขวางด้วย Threshold แต่รวมความสามารถต่อไปนี้ไว้ด้วยกัน:
+CargoShield AI ไม่ได้เป็นเพียงระบบตรวจสิ่งกีดขวางด้วย Threshold แต่รวมความสามารถต่อไปนี้ไว้ด้วยกัน:
 
 - AI จำแนกสภาพพื้นผิว
 - ประเมินความเสี่ยงต่อสินค้า
@@ -454,16 +466,16 @@ CargoShield Edge ไม่ได้เป็นเพียงระบบตร
 - จดจำพื้นที่เสี่ยง
 - ใช้ข้อมูลเดิมช่วยวางเส้นทาง
 - สื่อสารผ่าน MQTT
-- แสดงผลผ่าน 3D Dataset Replay Console และ Fleet Intelligence ใน `webapp/` *(เสร็จแล้ว)*
+- แสดงผลผ่าน Mission Protection Console และ Fleet Guardian ใน `webapp/` *(เสร็จแล้ว)*
 - รองรับการต่อยอดสู่ Secure Edge AI
 
 ---
 
 ## คำอธิบายแบบสั้น
 
-> CargoShield Edge คือ Prototype ระบบ AI สำหรับหุ่นยนต์ขนส่งสินค้า ปัจจุบันใช้ IMU windows ที่บันทึกไว้จาก validation split มา Replay เข้าโมเดล แล้วเผยแพร่ผลของแต่ละ window ผ่าน MQTT ให้ 3D Dataset Replay Console และ Fleet Intelligence แสดงการตัดสินใจ ระบบยังไม่ได้วัดเซนเซอร์สดจากหุ่นยนต์จริง
+> CargoShield AI คือ Prototype ระบบ AI สำหรับหุ่นยนต์ขนส่งสินค้า ปัจจุบันใช้ IMU windows ที่บันทึกไว้จาก validation split มา Replay เข้าโมเดล แล้วเผยแพร่ผลของแต่ละ window ผ่าน MQTT ให้ Mission Protection Console และ Fleet Guardian แสดงการตัดสินใจ ระบบยังไม่ได้วัดเซนเซอร์สดจากหุ่นยนต์จริง
 
-หน้าเว็บ 3 มิติและ Fleet Intelligence ทำงานแล้ว ส่วน Sensor Studio 0.1.9 รองรับได้เพียง
+Mission Protection Console และ Fleet Guardian ทำงานแล้ว ส่วน Sensor Studio 0.1.9 รองรับได้เพียง
 subscriber/state viewer เพราะ dashboard และ scene category ถูกปิดใน build ที่ติดตั้ง
 
 ---
@@ -482,7 +494,7 @@ MQTT Bridge              : ทำงานแล้ว
 Obstacle Contract        : ทำงานแล้ว (ตอบสนองทันทีต่อ input จำลอง)
 Demo Replay              : ทำงานแล้ว (10 หน้าต่าง ~10 วินาที)
 End-to-End MQTT          : ตรวจผ่านแล้ว 14/14 (reports/demo_e2e_evidence.json)
-Automated Tests          : 141 passed, 139 subtests
+Automated Tests          : 177 passed, 174 subtests
 Mission Protection UI    : ทำงานแล้ว (Cargo Protection State + Risk/Action/Speed เป็นหัวข้อหลัก)
 Fleet Guardian           : ทำงานแล้ว เป็นโมดูลภายใต้ CargoShield AI
 Maintenance Assistant    : ทำงานแล้ว อ่านอย่างเดียว 7 คำถาม พร้อมแถวหลักฐาน

@@ -9,16 +9,20 @@
 4. Robot-scoped MQTT contracts, validation, sequence checks, health state, and fleet isolation.
 5. Bounded asynchronous PostgreSQL historian, migrations, read-only History API, and export path.
 6. Three-robot simulator with database-outage evidence and next-mission route replanning.
-7. Thai-first Three.js Dataset Replay console and separate Fleet Intelligence dashboard.
-8. Provider-neutral read-only Maintenance Copilot boundary.
-9. Automated unit, integration, MQTT, fleet, and browser evidence.
+7. Thai-first Three.js Dataset Replay console with Overview, Follow, and Robot POV cameras,
+   responsive layouts, reduced-motion support, and a no-WebGL fallback.
+8. Fleet Intelligence dashboard with independent 20-row pagination and filtered CSV downloads for
+   safety events and mission history.
+9. Provider-neutral read-only Maintenance Copilot boundary.
+10. Automated unit, integration, MQTT, fleet, and browser evidence.
 
 ## Current verification
 
-- `131 passed, 111 subtests`
+- `177 passed, 174 subtests` on commit `6a9153d`
 - MQTT end-to-end: `14/14`
 - Fleet scenario: `12/12`
-- Browser verification: passed with zero console errors
+- Browser verification: passed with zero console errors, no horizontal overflow at the tested
+  1280×720, 1440×900, 1920×1080, and effective 200% zoom viewports
 - Dataset Replay: validation-only; train and held-out test windows are excluded
 
 See `FLEET_GUARDIAN_FINAL_REPORT.md` for measured evidence and `KNOWN_LIMITATIONS.md` for prohibited

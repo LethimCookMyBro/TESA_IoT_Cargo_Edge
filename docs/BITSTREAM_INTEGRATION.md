@@ -6,9 +6,11 @@ CargoShield now includes a local MQTT bridge at `cargo.mqtt_service`. It uses Bi
 - current retained state: `cargoshield/cargo-robot-01/state`
 - CargoShield-defined diagnostic topic: `device/+/devkit-twin/telemetry` — **not** an existing Bitstream or TESAIoT topic (it appears nowhere in the installed extension). Diagnostic-only; nothing is inferred from it.
 
-The installed Studio 0.1.9 profile can host a minimal subscriber/state viewer, but its dashboard and
-3D categories are disabled. The working operator controls and Three.js visualization are in
-`webapp/`. See [the capability audit](BITSTREAM_VISUAL_FLOW_CAPABILITIES.md) and
+The installed Studio 0.1.9 profile can host a minimal subscriber/state viewer. A manual
+`mqtt-subscriber` → `message-viewer` flow received the retained CargoShield state on the development
+workstation, but no exported preset is checked into this repository. Dashboard and 3D categories
+remain disabled. The working operator controls and Three.js visualization are in `webapp/`. See
+[the capability audit](BITSTREAM_VISUAL_FLOW_CAPABILITIES.md) and
 [runbook](CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md). The bridge is local and anonymous only because the
 active local broker accepted a credential-free local connection; do not expose it on an untrusted
 network.

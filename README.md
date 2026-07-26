@@ -17,6 +17,17 @@ CargoShield AI จึงเพิ่มชั้นการปกป้อง�
 > **สถานะปัจจุบันคือ Software Prototype:** ข้อมูลที่แสดงเป็น `DATASET` หรือ `SIMULATED`
 > ไม่ใช่การวัดสดจากบอร์ดหรือหุ่นยนต์จริง และฉาก Three.js ไม่ใช่ตำแหน่งจริงหรือ SLAM
 
+## วิดีโอแนะนำ (พร้อมเสียงบรรยายภาษาไทย ~72 วินาที)
+
+วิดีโอสรุปว่า CargoShield AI คืออะไรและทำงานอย่างไร พร้อมเสียงบรรยายภาษาไทย
+(สังเคราะห์ด้วยเสียง Neural TTS) ตัดต่อจากภาพหน้าจอจริงของระบบ
+(`reports/screenshots/after/`) ไล่ตามลำดับภารกิจจริง ไม่ใช่แอนิเมชันสมมติ
+
+[![เปิดวิดีโอแนะนำ CargoShield AI](reports/screenshots/after/IDLE.png)](reports/media/cargoshield_overview.mp4)
+
+คลิกภาพเพื่อเปิดวิดีโอ หรือ
+[ดาวน์โหลดไฟล์ MP4 โดยตรง](reports/media/cargoshield_overview.mp4)
+
 ## ปัญหาที่ต้องการแก้
 
 การขนส่งสินค้าเปราะบางมีความเสี่ยงที่ระบบนำทางทั่วไปมองไม่เห็น:
@@ -165,7 +176,9 @@ docker compose up -d
 .\.venv\Scripts\python.exe -m cargo.db
 ```
 
-ค่าการเชื่อมต่ออ่านจาก environment; คัดลอก `.env.example` เป็น `.env` เมื่อต้องการเปลี่ยนค่า
+Docker Compose อ่านไฟล์ `.env` อัตโนมัติ จึงคัดลอก `.env.example` เป็น `.env` ได้เมื่อต้องการ
+เปลี่ยนค่าฐานข้อมูล ส่วนคำสั่ง Python อ่าน environment ของ process โดยตรงและไม่ได้โหลด `.env`
+เอง หากรัน Python นอก Compose ให้ตั้งตัวแปร `CARGOSHIELD_PG_*` ใน PowerShell ก่อน
 
 ### 3. เปิดระบบ
 
@@ -220,16 +233,17 @@ scenario จำลองหุ่นยนต์สามตัวพร้อ�
 .\.venv\Scripts\python.exe -m pip_audit -r requirements.txt
 ```
 
-ผลล่าสุดที่บันทึกไว้ใน checkout นี้: **165 tests + 169 subtests**, MQTT E2E **14/14**,
-Fleet Scenario **12/12**, browser verification ไม่มี console error และ `pip-audit`
-ไม่พบช่องโหว่ที่รู้จัก ตัวเลข latency ทั้งหมดเป็นผลจาก local simulator ไม่ใช่ประสิทธิภาพของบอร์ด
+ผลที่ตรวจซ้ำบน commit `6a9153d`: **177 tests + 174 subtests**, `compileall` ผ่าน และ
+`pip-audit` ไม่พบช่องโหว่ที่รู้จัก ส่วนหลักฐาน end-to-end ที่เก็บใน repository ล่าสุดคือ
+MQTT E2E **14/14**, Fleet Scenario **12/12** และ browser verification ไม่มี console error
+ตัวเลข latency ทั้งหมดเป็นผลจาก local simulator ไม่ใช่ประสิทธิภาพของบอร์ด
 
 Browser evidence ครอบคลุมสถานะ `IDLE`, `MOVING`, `HOLD_UNCERTAIN`, `SLOW_DOWN`, `SAFE_STOPPED`,
 `COMPLETED`, กล้อง Overview/Follow/Robot POV, หน้า Fleet Guardian, Maintenance Assistant,
 ความละเอียด 1920×1080, 1440×900 และ 1280×720, effective viewport ที่ 200% zoom,
 รวมถึงโหมด no-WebGL และ reduced-motion — ภาพก่อน/หลังอยู่ใน
 `reports/screenshots/before/` และ `reports/screenshots/after/`
-อัตราเฟรมที่วัดได้รอบล่าสุด: **172–181 fps (median 180)** บน GPU จริง (RTX 4050)
+หลักฐาน browser ล่าสุดบันทึก **180 fps (median จาก 5 samples)** บน GPU จริง (RTX 4050)
 ค่านี้เป็นการเรนเดอร์หน้าเว็บ
 ไม่ใช่ประสิทธิภาพการ inference ของบอร์ด
 
@@ -260,3 +274,4 @@ RFC 4180, UTF-8 BOM สำหรับ Excel และเติม apostrophe �
 | [`docs/HARDWARE_EXPANSION_MATRIX.md`](docs/HARDWARE_EXPANSION_MATRIX.md) | หลักฐานที่ต้องมีก่อนเพิ่มกล้อง ไมค์ ระยะ หรือมอเตอร์ |
 | [`docs/HERMES_MAINTENANCE_COPILOT.md`](docs/HERMES_MAINTENANCE_COPILOT.md) | ขอบเขต Copilot แบบอ่านอย่างเดียว |
 | [`docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md`](docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md) | MQTT, Bitstream Sensor Studio และข้อจำกัดของ build |
+| [`แนวทางพัฒนาต่อ.md`](แนวทางพัฒนาต่อ.md) | งานที่ควรทำต่อ ไอเดียแขนกล และแนวทางเพิ่ม Hermes Agent |

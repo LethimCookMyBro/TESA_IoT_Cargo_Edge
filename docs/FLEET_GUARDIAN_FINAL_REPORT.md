@@ -4,6 +4,11 @@ Every number here was measured on this checkout on 2026-07-26. Nothing is carrie
 earlier summary. Where a claim is not supported by evidence in this repository, it is listed in
 §13 as prohibited rather than softened.
 
+> **Current revalidation:** commit `6a9153d` is on `main` and `origin/main`. The current checkout
+> passes **177 tests + 174 subtests**. Sections 9, 16, and 17 retain the measurements from their
+> individual implementation rounds, so their lower test counts are historical baselines rather
+> than the current total.
+
 ## 1. Outcome
 
 The single-robot CargoShield demo is now a multi-robot Fleet Guardian prototype:
@@ -724,7 +729,8 @@ handler.
 
 No selector, class, function, or dynamic template family was removed in this round. In particular,
 `tone-*`, `v-*`, and `glyph-*` remain untouched. `.gitignore` and package manifests were not
-changed. No commit or push was made. Evidence lives in:
+changed. No commit or push had been made at the time of that verification round; the completed
+round was subsequently committed and pushed as `68900ba`. Evidence lives in:
 
 - `reports/screenshots/before/`
 - `reports/screenshots/after/`

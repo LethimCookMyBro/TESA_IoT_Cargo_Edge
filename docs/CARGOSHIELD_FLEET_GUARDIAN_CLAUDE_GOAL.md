@@ -1,5 +1,11 @@
 # CargoShield Fleet Guardian — Claude Goal Prompt
 
+> **Historical execution prompt:** Phases 0–7 were implemented and verified. Do not run this prompt
+> again as if the repository were still a single-robot baseline. Current status is maintained in
+> `README.md`, `docs/CARGOSHIELD_IMPLEMENTATION_PLAN.md`, and
+> `docs/FLEET_GUARDIAN_FINAL_REPORT.md`. Revalidation on commit `6a9153d` passed
+> **177 tests + 174 subtests**.
+
 Copy the prompt below into Claude after starting a long-running `/goal`.
 
 ---

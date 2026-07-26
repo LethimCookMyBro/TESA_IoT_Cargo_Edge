@@ -104,6 +104,8 @@
 - PostgreSQL Historian ผ่าน queue ที่ทิ้งข้อมูลแทนการบล็อก Safety Core
 - History API แบบ GET-only และ read-only maintenance boundary
 - หน้าเว็บ Three.js ที่แสดงสถานะจาก MQTT และมี no-WebGL fallback ครบ
+- กล้อง Overview / Follow / Robot POV เป็นการแสดงผลเท่านั้น ไม่ส่งคำสั่งกลับ Safety Core
+- Safety Events และ Mission History แบ่งหน้าละไม่เกิน 20 แถว และส่งออก CSV ตามตัวกรองปัจจุบันได้
 
 ## 8. สิ่งที่เป็น Simulation หรือ Dataset
 

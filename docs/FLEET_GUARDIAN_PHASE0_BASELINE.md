@@ -1,5 +1,9 @@
 # Phase 0 — Factual baseline (before any production change)
 
+> **Historical snapshot:** this file records the state before Fleet Guardian implementation.
+> It is not the current project status. See `README.md` and `CARGOSHIELD_IMPLEMENTATION_PLAN.md`
+> for the latest verified state.
+
 Recorded from the real checkout and a live runtime on 2026-07-26. Nothing in this file is
 carried over from an earlier summary; every number was re-measured.
 
