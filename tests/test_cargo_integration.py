@@ -18,8 +18,8 @@ class CargoIntegrationTests(unittest.TestCase):
         source = DatasetReplaySource(root / "dataset", labels)
         controller = MissionController(root)
         controller.start()
-        window, point = source.window(0)
-        state = controller.process_dataset_window(window, point.ground_truth or "unknown", "A1")
+        window, ground_truth = source.window(0)
+        state = controller.process_dataset_window(window, ground_truth or "unknown", "A1")
         self.assertIn(state["decision"]["action"], {"MOVE", "SLOW_DOWN", "SAFE_STOP", "HOLD_UNCERTAIN"})
 
     def test_inference_and_training_extract_identical_features(self):

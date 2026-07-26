@@ -19,7 +19,6 @@ def _features(window: np.ndarray) -> np.ndarray:
 
 class SurfaceClassifier:
     def __init__(self, models_dir: Path) -> None:
-        self.models_dir = models_dir
         self.model = joblib.load(models_dir / "surface_baseline.joblib")
         self.labels = {int(key): value for key, value in json.loads((models_dir / "label_mapping.json").read_text(encoding="utf-8")).items()}
         self.config = json.loads((models_dir / "feature_config.json").read_text(encoding="utf-8"))

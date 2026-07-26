@@ -18,6 +18,9 @@ DIAGNOSTIC_MIN_INTERVAL_S = 1.0
 # so demo pacing can be retuned without changing which data is shown.
 REPLAY_INTERVAL_S = 1.0
 
+# How long a new Start waits for a finished run's thread to exit before reporting a conflict.
+REPLAY_HANDOVER_TIMEOUT_S = 2.0
+
 # Curated dataset demonstration sequence, not an evaluation result: fixed indices into the
 # local CareerCon windows, chosen so one run exercises every low/medium/high vibration band
 # and both the confident and the below-threshold model responses. Predictions, confidences and
@@ -128,8 +131,17 @@ class CargoMqttService:
             self.publish_state(error=str(exc))
 
     def start_dataset_demo(self) -> None:
-        if self._replay is not None and self._replay.is_alive():
-            raise ValueError("dataset replay is already running")
+        previous = self._replay
+        if previous is not None and previous.is_alive():
+            # A run publishes its terminal state before its thread is scheduled to exit. An operator
+            # (or an evidence script) reacting to COMPLETED would otherwise be told the finished
+            # replay is "already running", which is how the obstacle contract check went flaky.
+            # `mission_running` is the authority on whether windows are still being stepped.
+            if self.controller.mission_running:
+                raise ValueError("dataset replay is already running")
+            previous.join(REPLAY_HANDOVER_TIMEOUT_S)
+            if previous.is_alive():
+                raise ValueError("the previous dataset replay has not released its thread")
         self._stop.clear(); self._paused.clear()
         self.controller.select(source="dataset")
         self.controller.start()
@@ -143,7 +155,7 @@ class CargoMqttService:
     def _replay_dataset(self, source: DatasetReplaySource) -> None:
         self.controller.mission_running = True
         try:
-            available = len(source.indices())
+            available = len(source)
             indices = [index for index in DEMO_SEQUENCE if index < available]
             total = len(indices)
             if total == 0:
@@ -159,8 +171,8 @@ class CargoMqttService:
                     time.sleep(0.05)
                 if self._stop.is_set() or self.controller.latched_stop:
                     return
-                window, point = source.window(int(index))
-                self.controller.process_dataset_window(window, point.ground_truth or "unknown", zones[step])
+                window, ground_truth = source.window(int(index))
+                self.controller.process_dataset_window(window, ground_truth or "unknown", zones[step])
                 self.controller.last["progress"] = (step + 1) / total
                 self.publish_state()
                 if self.controller.latched_stop:
@@ -171,6 +183,9 @@ class CargoMqttService:
                 # Wait, but wake immediately on stop so a safe stop or reset ends the run without a lag.
                 self._stop.wait(self.interval_s)
             if not self.controller.latched_stop and not self._stop.is_set():
+                # Clear the flag *before* announcing completion, so a subscriber that reacts to
+                # COMPLETED by pressing Start finds a service that will accept it.
+                self.controller.mission_running = False
                 self.controller.complete(); self.publish_state()
         except Exception as exc:
             self.controller.status = "ERROR"; self.publish_state(error=f"dataset replay failed: {exc!r}")

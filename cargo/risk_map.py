@@ -18,7 +18,6 @@ class ZoneRisk:
 
 class ZoneRiskMap:
     def __init__(self, history_size: int = 20) -> None:
-        self._history_size = history_size
         self._scores: dict[str, deque[float]] = defaultdict(lambda: deque(maxlen=history_size))
         self._surfaces: dict[str, str] = {}
         self._updated_ms: dict[str, int] = {}

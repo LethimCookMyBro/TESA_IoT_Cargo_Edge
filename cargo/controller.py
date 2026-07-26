@@ -7,11 +7,10 @@ from dataclasses import asdict
 from pathlib import Path
 from time import time
 
-from .decision_engine import CargoPolicy, decide
+from .decision_engine import decide, load_policy
 from .inference import SurfaceClassifier
 from .risk_map import ZoneRiskMap
 from .routing import DEMO_GRAPH, choose_route
-from .telemetry import normalize_bmi270
 
 # A mission that is under way still owes the operator a live answer to an obstacle input.
 ACTIVE_STATUSES = frozenset({"READY", "MOVING", "SLOWING", "HOLDING", "PAUSED", "SAFE_STOPPED"})
@@ -19,18 +18,19 @@ STATUS_BY_ACTION = {"SAFE_STOP": "SAFE_STOPPED", "HOLD_UNCERTAIN": "HOLDING", "S
 
 
 class MissionController:
-    def __init__(self, project_root: Path, on_change=None) -> None:
-        self.root, self.on_change = project_root, on_change
+    def __init__(self, project_root: Path) -> None:
+        self.root = project_root
         self.risks, self.events = ZoneRiskMap(), deque(maxlen=200)
         self.cargo_type, self.source, self.pickup, self.destination = "standard", "dataset", "A1", "C2"
         self.status, self.obstacle_distance, self.latched_stop = "IDLE", None, False
         self.mission_running = False  # True only while something is actually stepping windows
         self.last, self.route, self._classifier = {}, None, None
+        # The confidence threshold is whatever the validation split chose, not a constant typed here.
+        self.policy = load_policy(project_root / "models")
         self._log("app initialized")
 
     def _log(self, text: str) -> None:
         self.events.append({"timestamp_ms": int(time() * 1000), "message": text})
-        if self.on_change: self.on_change(self.snapshot())
 
     def _model(self) -> SurfaceClassifier:
         if self._classifier is None: self._classifier = SurfaceClassifier(self.root / "models")
@@ -60,7 +60,7 @@ class MissionController:
         inference = self._last_inference()
         # IDLE / COMPLETED / ERROR record the input only: no movement may be invented from a finished run.
         if self.status in ACTIVE_STATUSES and inference is not None:
-            decision = decide(CargoPolicy(), cargo_type=self.cargo_type, vibration_risk=inference["vibration_risk"], telemetry_valid=True, confidence=inference["confidence"], obstacle_distance=distance, latched_stop=self.latched_stop)
+            decision = decide(self.policy, cargo_type=self.cargo_type, vibration_risk=inference["vibration_risk"], telemetry_valid=True, confidence=inference["confidence"], obstacle_distance=distance, latched_stop=self.latched_stop)
             was_paused = self.status == "PAUSED"
             self._apply_decision(decision)
             # A safe stop overrides a pause; anything milder must not silently un-pause the mission.
@@ -97,7 +97,7 @@ class MissionController:
             model = self._model()
             result = model.predict(window)
             self.risks.observe(zone, min(1.0, result["vibration_score"] / max(1e-9, model.config["risk_quantiles"]["medium_to_high"])), result["label"])
-            decision = decide(CargoPolicy(), cargo_type=self.cargo_type, vibration_risk=result["vibration_risk"], telemetry_valid=True, confidence=result["confidence"], obstacle_distance=self.obstacle_distance, latched_stop=self.latched_stop)
+            decision = decide(self.policy, cargo_type=self.cargo_type, vibration_risk=result["vibration_risk"], telemetry_valid=True, confidence=result["confidence"], obstacle_distance=self.obstacle_distance, latched_stop=self.latched_stop)
         except Exception as exc:
             self.status = "ERROR"
             self.last = {"source": "dataset", "reason": f"dataset inference failed: {exc!r}"}
@@ -110,11 +110,9 @@ class MissionController:
         self._log(f"prediction {result['label']} ({result['confidence']:.2f}); {decision.action}")
         return self.last
 
-    def accept_ble_sample(self, sample: dict) -> None:
-        # Current BLE units/windows are not calibrated to CareerCon; do not run an invalid inference.
-        telemetry = normalize_bmi270(sample)
-        self.last = {"source": "ble", "data_valid": False, "telemetry_received": telemetry is not None, "reason": "BLE calibration and 128-sample compatibility are required before inference"}
-        self._log("BLE BMI270 telemetry received; inference withheld pending calibration")
+    # Live BMI270 ingest is deliberately absent here rather than stubbed. When a board is available
+    # its samples arrive through the fleet telemetry contract (cargo/contracts.py) and are validated
+    # against the installed sensor catalog by cargo/health.py -- see docs/KNOWN_LIMITATIONS.md.
 
     def snapshot(self) -> dict:
         return {"status": self.status, "cargo_type": self.cargo_type, "source": self.source, "route": asdict(self.route) if self.route else None, "obstacle_distance": self.obstacle_distance, "last": self.last, "events": list(self.events), "risk_map": self.risks.as_dict()}

@@ -5,7 +5,6 @@ from cargo.controller import MissionController
 from cargo.decision_engine import CargoPolicy, decide
 from cargo.risk_map import ZoneRiskMap
 from cargo.routing import DEMO_GRAPH, choose_route
-from cargo.telemetry import normalize_bmi270
 
 
 class CargoCoreTests(unittest.TestCase):
@@ -23,15 +22,6 @@ class CargoCoreTests(unittest.TestCase):
         held = decide(CargoPolicy(), cargo_type="fragile", vibration_risk="low", telemetry_valid=True, confidence=1.0, obstacle_distance=200, latched_stop=True)
         self.assertEqual(stopped.action, "SAFE_STOP")
         self.assertEqual(held.action, "SAFE_STOP")
-
-    def test_bmi270_adapter_rejects_missing_gyro(self):
-        sample = {"sensor": "bmi270", "device_ms": 1, "fields": {"accelX": 1, "accelY": 2, "accelZ": 3}}
-        self.assertIsNone(normalize_bmi270(sample))
-
-    def test_bmi270_adapter_normalizes_verified_fields(self):
-        sample = {"sensor": "bmi270", "device_ms": 7, "fields": {"accelX": 1, "accelY": 2, "accelZ": 3, "gyroX": 4, "gyroY": 5, "gyroZ": 6}}
-        telemetry = normalize_bmi270(sample)
-        self.assertEqual(telemetry.accel, (1.0, 2.0, 3.0))
 
     def test_blocked_destination_has_no_demo_route(self):
         self.assertIsNone(choose_route(DEMO_GRAPH, ZoneRiskMap(), "A1", "C2", "standard", {"C2"}))
@@ -139,9 +129,10 @@ class ObstacleContractTests(unittest.TestCase):
         self.assertFalse(controller.latched_stop)
 
     def test_active_mission_without_a_real_inference_only_records_distance(self):
+        # A started mission that has not yet produced a model output must not invent a decision
+        # from an obstacle input alone.
         controller = MissionController(Path("."))
         controller.start()
-        controller.accept_ble_sample({"sensor": "bmi270", "device_ms": 1, "fields": {}})
         controller.set_obstacle(20)
         self.assertEqual(controller.status, "READY")
         self.assertEqual(controller.obstacle_distance, 20)

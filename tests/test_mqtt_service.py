@@ -4,16 +4,19 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-import numpy as np
 
 from cargo.mqtt_service import DEMO_SEQUENCE, REPLAY_INTERVAL_S, CargoMqttService
 from cargo.routing import DEMO_GRAPH, choose_route
 
 
 class _EmptySource:
-    @staticmethod
-    def indices():
-        return np.array([], dtype=int)
+    """Mirrors DatasetReplaySource's real surface: a length, and windows by index."""
+
+    def __len__(self):
+        return 0
+
+    def window(self, index):
+        raise IndexError(index)
 
 
 class FakeClient:
