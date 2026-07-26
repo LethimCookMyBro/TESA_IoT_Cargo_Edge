@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CargoShield · ศูนย์วิเคราะห์กองหุ่นยนต์</title>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body class="fleet">
+
+<a class="skip-link" href="#fleet-main">ข้ามไปยังเนื้อหาหลัก</a>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 2 4 5.2v6.1c0 5 3.4 9.3 8 10.7 4.6-1.4 8-5.7 8-10.7V5.2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="m8.6 12 2.4 2.4 4.4-4.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <h1>CargoShield</h1>
+      <p class="brand-sub">ศูนย์วิเคราะห์กองหุ่นยนต์ (Fleet Intelligence)</p>
+    </div>
+  </div>
+
+  <nav class="nav" aria-label="สลับหน้าจอ">
+    <a href="./index.html">ปฏิบัติการสด (Live Operations)</a>
+    <a href="./fleet.html" aria-current="page">วิเคราะห์กองหุ่นยนต์ (Fleet Intelligence)</a>
+  </nav>
+
+  <div class="topbar-stats">
+    <div class="stat">
+      <span class="stat-key">การเชื่อมต่อ MQTT</span>
+      <span class="stat-value"><span id="link-dot" class="dot dot-idle" aria-hidden="true"></span><span id="link-text">กำลังเชื่อมต่อ…</span></span>
+    </div>
+    <div class="stat">
+      <span class="stat-key">ฐานข้อมูลประวัติ</span>
+      <span class="stat-value"><span id="api-dot" class="dot dot-idle" aria-hidden="true"></span><span id="api-text">กำลังตรวจสอบ…</span></span>
+    </div>
+    <div class="stat">
+      <span class="stat-key">ที่มาของข้อมูล</span>
+      <span class="stat-value"><span class="chip chip-sim" id="provenance-badge">SIMULATED · ข้อมูลจำลอง</span></span>
+    </div>
+  </div>
+</header>
+
+<main class="fleet-main" id="fleet-main">
+
+  <p class="sim-notice" role="note">
+    ข้อมูลทั้งหมดในหน้านี้เป็น <strong>ข้อมูลจำลอง (SIMULATED)</strong> หรือ <strong>ชุดข้อมูลที่บันทึกไว้ (DATASET)</strong>
+    — ไม่ใช่การวัดจากหุ่นยนต์จริง ไม่มีการระบุตำแหน่งจริง และไม่มีเซ็นเซอร์วัดระยะจริง
+    การตัดสินใจด้านความปลอดภัยทั้งหมดมาจาก Python Engine
+  </p>
+
+  <section class="panel" aria-labelledby="summary-heading">
+    <h2 id="summary-heading">ภาพรวมกองหุ่นยนต์</h2>
+    <ul class="summary" id="fleet-summary">
+      <li><span class="summary-key">ทั้งหมด</span><b id="count-total">—</b></li>
+      <li><span class="summary-key">ปกติ (online)</span><b id="count-online" class="tone-go">—</b></li>
+      <li><span class="summary-key">เสื่อมสภาพ (degraded)</span><b id="count-degraded" class="tone-hold">—</b></li>
+      <li><span class="summary-key">หยุดปลอดภัย (stopped)</span><b id="count-stopped" class="tone-stop">—</b></li>
+      <li><span class="summary-key">ออฟไลน์ (offline)</span><b id="count-offline" class="tone-idle">—</b></li>
+    </ul>
+    <dl class="readout">
+      <dt>คิวเขียนฐานข้อมูล</dt><dd id="v-queue">—</dd>
+      <dt>เรคคอร์ดที่ถูกทิ้ง</dt><dd id="v-dropped">—</dd>
+      <dt>หน่วงเวลาตัดสินใจ p50 / p95 / สูงสุด</dt><dd id="v-latency">—</dd>
+      <dt>หมายเหตุการวัด</dt><dd class="wrap" id="v-latency-note">—</dd>
+    </dl>
+  </section>
+
+  <section class="panel" aria-labelledby="robots-heading">
+    <h2 id="robots-heading">สถานะและสุขภาพรายหุ่นยนต์</h2>
+    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="robots-heading">
+      <table class="grid" id="robot-table">
+        <thead>
+          <tr>
+            <th scope="col">หุ่นยนต์</th>
+            <th scope="col">สถานะภารกิจ</th>
+            <th scope="col">สุขภาพเซ็นเซอร์</th>
+            <th scope="col">เห็นล่าสุด</th>
+            <th scope="col">ตัวอย่างที่รับ / ปฏิเสธ</th>
+            <th scope="col">ช่องที่กักกัน</th>
+            <th scope="col">เหตุผล</th>
+          </tr>
+        </thead>
+        <tbody id="robot-rows"><tr><td colspan="7">ยังไม่ได้รับข้อมูลจากกองหุ่นยนต์</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="series-heading">
+    <h2 id="series-heading">แนวโน้มตามเวลา</h2>
+    <p class="hint">เลือกหุ่นยนต์เพื่อดูค่าที่บันทึกไว้ในฐานข้อมูลประวัติ (อ่านอย่างเดียว)</p>
+    <label for="series-robot">หุ่นยนต์</label>
+    <select id="series-robot"></select>
+    <div class="series" id="series-charts"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="zones-heading">
+    <h2 id="zones-heading">เปรียบเทียบความเสี่ยงรายโซน / เส้นทาง</h2>
+    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="zones-heading">
+      <table class="grid" id="zone-table">
+        <thead>
+          <tr>
+            <th scope="col">โซน</th><th scope="col">ตัวอย่าง</th>
+            <th scope="col">การสั่นเฉลี่ย</th><th scope="col">สูงสุด</th>
+            <th scope="col">ช่วงเสี่ยงสูง</th><th scope="col">ระดับ</th>
+          </tr>
+        </thead>
+        <tbody id="zone-rows"><tr><td colspan="6">ยังไม่มีข้อมูลโซน</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="missions-heading">
+    <h2 id="missions-heading">ประวัติภารกิจ</h2>
+    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="missions-heading">
+      <table class="grid" id="mission-table">
+        <thead>
+          <tr><th scope="col">ภารกิจ</th><th scope="col">หุ่นยนต์</th><th scope="col">สินค้า</th>
+              <th scope="col">เส้นทาง</th><th scope="col">ต้นทุน</th><th scope="col">เริ่ม</th></tr>
+        </thead>
+        <tbody id="mission-rows"><tr><td colspan="6">ยังไม่มีภารกิจที่บันทึกไว้</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="events-heading">
+    <h2 id="events-heading">ประวัติเหตุการณ์ความปลอดภัย</h2>
+    <label for="event-severity">ระดับความรุนแรง</label>
+    <select id="event-severity">
+      <option value="">ทั้งหมด</option>
+      <option value="critical">critical · วิกฤต</option>
+      <option value="warning">warning · เตือน</option>
+      <option value="info">info · ข้อมูล</option>
+    </select>
+    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="events-heading">
+      <table class="grid" id="event-table">
+        <thead>
+          <tr><th scope="col">เวลา</th><th scope="col">หุ่นยนต์</th><th scope="col">ระดับ</th>
+              <th scope="col">ชนิด</th><th scope="col">การทำงาน</th><th scope="col">สุขภาพ</th>
+              <th scope="col">เหตุผล</th></tr>
+        </thead>
+        <tbody id="event-rows"><tr><td colspan="7">ยังไม่มีเหตุการณ์</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="maintenance-heading">
+    <h2 id="maintenance-heading">คิวงานบำรุงรักษา</h2>
+    <p class="hint">
+      การรับทราบ (acknowledge) เป็นคำสั่งของผู้ปฏิบัติงาน ส่งผ่าน MQTT command topic เท่านั้น
+      — API ประวัติเป็นแบบอ่านอย่างเดียวและเขียนข้อมูลไม่ได้
+    </p>
+    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="maintenance-heading">
+      <table class="grid" id="maintenance-table">
+        <thead>
+          <tr><th scope="col">หุ่นยนต์</th><th scope="col">ระดับ</th><th scope="col">เหตุผล</th>
+              <th scope="col">เปิดเมื่อ</th><th scope="col">สถานะ</th><th scope="col">การจัดการ</th></tr>
+        </thead>
+        <tbody id="maintenance-rows"><tr><td colspan="6">ไม่มีงานค้าง</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="quality-heading">
+    <h2 id="quality-heading">คุณภาพและที่มาของข้อมูล</h2>
+    <ul class="risk-list" id="quality-list"><li>ยังไม่มีข้อมูล</li></ul>
+  </section>
+
+  <section class="panel" aria-labelledby="export-heading">
+    <h2 id="export-heading">ส่งออกชุดข้อมูลสำหรับการฝึกโมเดล</h2>
+    <p class="hint">
+      การส่งออกเป็นการเขียนไฟล์ จึงไม่ผ่าน API อ่านอย่างเดียว หน้านี้สร้างคำสั่งให้คัดลอกไปรันเอง
+      และแสดงตัวอย่าง manifest ของการส่งออกที่ผ่านมา
+    </p>
+    <div class="export-controls">
+      <div class="field">
+        <label for="export-robots">หุ่นยนต์ (คั่นด้วยจุลภาค)</label>
+        <input id="export-robots" type="text" placeholder="robot-alpha,robot-bravo">
+      </div>
+      <div class="field">
+        <label for="export-provenance">ที่มา</label>
+        <select id="export-provenance">
+          <option value="">ทั้งหมด</option>
+          <option value="SIMULATED">SIMULATED</option>
+          <option value="DATASET">DATASET</option>
+          <option value="HARDWARE">HARDWARE</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="export-format">รูปแบบ</label>
+        <select id="export-format"><option value="jsonl">jsonl</option><option value="csv">csv</option></select>
+      </div>
+    </div>
+    <pre class="command" id="export-command" tabindex="0" aria-label="คำสั่งส่งออกที่สร้างขึ้น"></pre>
+    <h3 class="sub">ตัวอย่าง manifest ล่าสุด</h3>
+    <pre class="command" id="export-manifest" tabindex="0" aria-label="manifest ของการส่งออกล่าสุด">ยังไม่มีการส่งออก</pre>
+  </section>
+
+  <p class="stage-note" id="api-error" hidden role="alert"></p>
+</main>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<script type="module" src="./fleet.js"></script>
+</body>
+</html>

@@ -43,8 +43,15 @@ function toast(message, bad = false) {
 
 /* ---------------- controls ---------------- */
 
-for (const [select, options] of [[$('cargo'), CARGO_TYPES], [$('pickup'), ZONES], [$('destination'), ZONES]]) {
-  select.append(...options.map((value) => new Option(value, value)));
+const CARGO_LABELS = { standard: 'สินค้าทั่วไป', fragile: 'สินค้าเปราะบาง' };
+const PROVENANCE_LABELS = {
+  dataset: 'ชุดข้อมูลที่บันทึกไว้ ไม่ใช่การวัดสด',
+  simulated: 'ข้อมูลจำลอง',
+  hardware: 'ฮาร์ดแวร์จริง',
+};
+$('cargo').append(...CARGO_TYPES.map((value) => new Option(`${CARGO_LABELS[value]} (${value})`, value)));
+for (const select of [$('pickup'), $('destination')]) {
+  select.append(...ZONES.map((value) => new Option(value, value)));
 }
 $('pickup').value = 'A1';
 $('destination').value = 'C2';
@@ -59,6 +66,10 @@ const sentAt = new Map();
 // A demo is a live system: one accidental double-click must not queue two missions. Keyed on the
 // payload, so changing pickup and destination in quick succession still sends both commands.
 const MIN_REPEAT_MS = 400;
+// Bounded retry across a transport reconnect. Three attempts 400 ms apart covers the observed
+// WebSocket drop without ever queueing a command indefinitely.
+const COMMAND_ATTEMPTS = 3;
+const COMMAND_RETRY_MS = 400;
 
 async function send(name, payload, button) {
   const key = JSON.stringify(payload);
@@ -72,11 +83,21 @@ async function send(name, payload, button) {
     // Cleared by the next published state; the timeout only covers a broker that never answers.
     setTimeout(() => release(button), 3000);
   }
-  try {
-    await client.publish(topic.command, payload);
-  } catch (error) {
-    release(button);
-    toast(`publish failed: ${error?.message ?? error}`, true);
+  // A WebSocket that is reconnecting rejects the write ("already in CLOSING or CLOSED state") and
+  // the operator's command is simply lost. Retry across the reconnect window before giving up:
+  // pressing Stop must not silently do nothing because a ping was missed a moment earlier.
+  for (let attempt = 0; attempt < COMMAND_ATTEMPTS; attempt += 1) {
+    try {
+      await client.publish(topic.command, payload);
+      return;
+    } catch (error) {
+      if (attempt === COMMAND_ATTEMPTS - 1) {
+        release(button);
+        toast(`ส่งคำสั่งไม่สำเร็จ: ${error?.message ?? error}`, true);
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, COMMAND_RETRY_MS));
+    }
   }
 }
 
@@ -94,8 +115,30 @@ $('cargo').addEventListener('change', (event) => send('set_cargo', COMMANDS.set_
 for (const id of ['pickup', 'destination']) {
   $(id).addEventListener('change', () => send('set_mission', COMMANDS.set_mission($('pickup').value, $('destination').value)));
 }
-$('obstacle').addEventListener('input', (event) => { $('obstacle-value').value = event.target.value; });
-$('obstacle-send').addEventListener('click', (event) => send('set_obstacle', COMMANDS.set_obstacle($('obstacle').value), event.currentTarget));
+const obstacleRange = $('obstacle');
+const obstacleNumber = $('obstacle-value');
+
+function obstacleValue() {
+  const value = Number(obstacleNumber.value);
+  if (!Number.isFinite(value) || value < 0 || value > 200) {
+    obstacleNumber.reportValidity();
+    return null;
+  }
+  return value;
+}
+
+obstacleRange.addEventListener('input', () => { obstacleNumber.value = obstacleRange.value; });
+obstacleNumber.addEventListener('input', () => {
+  const value = obstacleValue();
+  if (value !== null) obstacleRange.value = String(value);
+});
+obstacleNumber.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') $('obstacle-send').click();
+});
+$('obstacle-send').addEventListener('click', (event) => {
+  const value = obstacleValue();
+  if (value !== null) send('set_obstacle', COMMANDS.set_obstacle(value), event.currentTarget);
+});
 
 /* ---------------- rendering ---------------- */
 
@@ -109,6 +152,9 @@ const show = (value) => {
 
 let lastStateAt = null;
 let lastEventMs = 0;
+// Counts states actually published by the engine. Exposed on #status so an automated check can
+// tell "the engine answered and it is READY" apart from "it was already READY before I asked".
+let statesRendered = 0;
 
 function renderTimeline(events) {
   if (!Array.isArray(events)) return;
@@ -167,19 +213,28 @@ function render(state) {
       element.value = typeof value === 'number' ? value : 0;
       $('progress-value').value = typeof value === 'number' ? `${(value * 100).toFixed(0)}%` : NA;
     } else {
-      element.textContent = show(value);
+      element.textContent = key === 'cargo_type' ? (CARGO_LABELS[value] ?? show(value)) : show(value);
     }
   }
 
   const status = read(state, 'status');
-  $('status').textContent = show(status);
-  $('status').className = `tone-${statusTone(status)}`;
-  $('v-source').textContent = show(read(state, 'source'));
-  $('v-error').textContent = state?.error ?? state?.source_diagnostic ?? 'none';
+  const statusNode = $('status');
+  statusNode.textContent = show(status);
+  statusNode.className = `tone-${statusTone(status)}`;
+  // The raw enum, kept out of the visible text so the label can be translated freely.
+  statusNode.dataset.status = show(status);
+  statusNode.dataset.states = String(++statesRendered);
+  // Provenance is stated in the contract's own vocabulary. `dataset` lowercase read as a config
+  // value; DATASET reads as the claim it actually is.
+  const source = read(state, 'source');
+  $('v-source').textContent = source ? `${String(source).toUpperCase()} · ${PROVENANCE_LABELS[source] ?? 'ที่มาไม่ระบุ'}` : NA;
+  $('v-error').textContent = state?.error ?? state?.source_diagnostic ?? 'ไม่มี';
 
   const distance = read(state, 'obstacle_distance');
   const tone = obstacleTone(distance);
-  $('v-obstacle_distance').textContent = tone === 'none' ? NA : `${distance} cm · ${tone === 'stop' ? 'stop region' : tone === 'warn' ? 'slow region' : 'clear'}`;
+  // "จำลอง" travels with the value, not just with the input control: this distance is an operator
+  // input, never a measurement, and a screenshot of it must not suggest a real distance sensor.
+  $('v-obstacle_distance').textContent = tone === 'none' ? NA : `จำลอง ${distance} ซม. · ${tone === 'stop' ? 'เขตหยุดปลอดภัย' : tone === 'warn' ? 'เขตชะลอ' : 'ระยะปลอดภัย'}`;
 
   renderRisk(read(state, 'risk_map'));
   renderTimeline(read(state, 'events'));
@@ -194,7 +249,7 @@ function render(state) {
 function tickAge() {
   if (lastStateAt === null) return;
   const seconds = (Date.now() - lastStateAt) / 1000;
-  $('age').textContent = seconds < 1 ? 'just now' : `${seconds.toFixed(1)} s ago`;
+  $('age').textContent = seconds < 1 ? 'เมื่อสักครู่' : `${seconds.toFixed(1)} วินาทีที่แล้ว`;
 }
 setInterval(tickAge, 250);
 
@@ -206,12 +261,12 @@ function setLink(text, tone) {
 }
 
 client.on('error', (error) => {
-  setLink('error', 'stop');
+  setLink('ผิดพลาด', 'stop');
   $('v-error').textContent = String(error?.message ?? error);
 });
-client.on('disconnect', () => setLink('disconnected', 'stop'));
-client.on('reconnect', () => setLink('reconnecting…', 'idle'));
-client.on('connect', () => setLink('connected', 'go'));
+client.on('disconnect', () => setLink('ตัดการเชื่อมต่อ', 'stop'));
+client.on('reconnect', () => setLink('กำลังเชื่อมต่อใหม่…', 'idle'));
+client.on('connect', () => setLink('เชื่อมต่อแล้ว', 'go'));
 
 $('device-id').textContent = deviceId;
 $('v-url').textContent = url;
@@ -219,11 +274,11 @@ $('v-topic').textContent = topic.state;
 
 try {
   await client.connect();
-  setLink('connected', 'go');
+  setLink('เชื่อมต่อแล้ว', 'go');
   // State is retained, so this renders the last known mission immediately on open.
   await client.subscribe(topic.state, (message) => render(message.payload));
 } catch (error) {
-  setLink('offline', 'stop');
+  setLink('ออฟไลน์', 'stop');
   $('v-error').textContent = String(error?.message ?? error);
-  toast(`cannot reach ${url}`, true);
+  toast(`เชื่อมต่อ ${url} ไม่สำเร็จ`, true);
 }

@@ -90,7 +90,7 @@ export const DEMO_EDGES = [
 ];
 
 /** The only statuses under which the robot may be shown moving. */
-export const MOVING_STATUSES = new Set(['MOVING', 'SLOWING']);
+const MOVING_STATUSES = new Set(['MOVING', 'SLOWING']);
 
 /**
  * How the scene is allowed to animate the robot for a state.

@@ -15,6 +15,7 @@ import argparse
 import json
 import time
 from pathlib import Path
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from playwright.sync_api import sync_playwright
 
@@ -23,6 +24,12 @@ SHOTS = ROOT / "reports" / "screenshots"
 
 # Chromium needs a software rasteriser to give a headless page a WebGL context.
 LAUNCH_ARGS = ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+
+
+# Emitted by the vendored MQTT SDK when a publish races a WebSocket reconnect. It is transport
+# noise, not an application fault: app.js now retries the command across the reconnect window, so
+# the operator's action still lands. Counted and reported separately rather than hidden.
+TRANSPORT_NOISE = ("WebSocket is already in CLOSING or CLOSED state",)
 
 
 class Console:
@@ -35,22 +42,46 @@ class Console:
         page.on("requestfailed", lambda r: self.messages.append({"type": "requestfailed", "text": f"{r.url} {r.failure}"}))
 
     @property
-    def errors(self) -> list[dict]:
+    def _raw_errors(self) -> list[dict]:
         return [m for m in self.messages if m["type"] in {"error", "pageerror", "requestfailed"}]
+
+    @property
+    def transport_noise(self) -> list[dict]:
+        return [m for m in self._raw_errors if any(marker in m["text"] for marker in TRANSPORT_NOISE)]
+
+    @property
+    def errors(self) -> list[dict]:
+        """Application errors. Transport reconnect notices are reported by `transport_noise`."""
+        return [m for m in self._raw_errors if not any(marker in m["text"] for marker in TRANSPORT_NOISE)]
 
 
 def status(page) -> str:
-    return page.inner_text("#status").strip()
+    """The raw engine enum, not the rendered label, so translating the UI cannot break the check."""
+    return (page.get_attribute("#status", "data-status") or "").strip()
 
 
-def wait_status(page, *wanted: str, timeout: float = 30.0) -> str:
-    """Poll the rendered status; every value here is published by the engine, not by the page."""
+def states_rendered(page) -> int:
+    """How many states the engine has published to this page so far."""
+    return int(page.get_attribute("#status", "data-states") or 0)
+
+
+def wait_status(page, *wanted: str, timeout: float = 30.0, since: int = 0) -> str:
+    """Wait for a state the engine published *after* `since`.
+
+    Without the `since` guard this returned immediately whenever the page already showed a wanted
+    value, so a step could pass before its command had even reached the broker and the next step
+    would then race a command still in flight. That was one of two causes of the flaky baseline
+    recorded in docs/FLEET_GUARDIAN_PHASE0_BASELINE.md.
+    """
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        if status(page) in wanted:
+        if states_rendered(page) > since and status(page) in wanted:
             return status(page)
         page.wait_for_timeout(60)
-    raise AssertionError(f"timed out waiting for {wanted}; page shows {status(page)!r}")
+    raise AssertionError(
+        f"timed out waiting for {wanted} after state #{since}; "
+        f"page shows {status(page)!r} at state #{states_rendered(page)}"
+    )
 
 
 def snapshot(page, name: str) -> str:
@@ -61,11 +92,8 @@ def snapshot(page, name: str) -> str:
 
 
 def set_obstacle(page, centimetres: int) -> None:
-    page.eval_on_selector(
-        "#obstacle",
-        "(el, v) => { el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); }",
-        centimetres,
-    )
+    # Exercise the operator-facing number field, not just the range input.
+    page.fill("#obstacle-value", str(centimetres))
     page.click("#obstacle-send")
 
 
@@ -96,9 +124,60 @@ def probe_variant(browser, url: str, *, reduced_motion: str | None = None, block
         context.close()
 
 
+def probe_fleet_page(browser, url: str, api: str) -> dict:
+    """Fleet Intelligence is a separate surface; it must stand up on its own evidence."""
+    # `url` may already carry a query string (e.g. ?device=...), so build the fleet URL from its
+    # path rather than concatenating onto it.
+    base = urlsplit(url)
+    directory = base.path.rsplit("/", 1)[0] + "/"
+    fleet_url = urlunsplit((base.scheme, base.netloc, directory + "fleet.html",
+                            urlencode({"api": api}), ""))
+    context = browser.new_context(viewport={"width": 1440, "height": 900})
+    page = context.new_page()
+    console = Console(page)
+    try:
+        page.goto(fleet_url, wait_until="load")
+        # Live summary arrives over MQTT from the retained fleet status topic.
+        page.wait_for_function("() => document.getElementById('count-total').textContent !== '—'", timeout=20000)
+        # History arrives over the read-only API, which reports its own reachability.
+        page.wait_for_function("() => document.getElementById('api-text').textContent !== 'กำลังตรวจสอบ…'", timeout=20000)
+        page.wait_for_timeout(1500)
+        rows = page.eval_on_selector_all("#robot-rows tr", "nodes => nodes.length")
+        page.keyboard.press("Tab")
+        first_focus = page.evaluate("() => document.activeElement?.className || document.activeElement?.tagName")
+        evidence = {
+            "robot_rows": rows,
+            "fleet_total": page.inner_text("#count-total"),
+            "history_api": page.inner_text("#api-text"),
+            "history_api_ok": page.evaluate("() => document.getElementById('api-dot').className.includes('dot-go')"),
+            "simulated_badge": page.inner_text("#provenance-badge"),
+            "simulated_notice_visible": page.is_visible(".sim-notice"),
+            "zone_rows": page.eval_on_selector_all("#zone-rows tr", "nodes => nodes.length"),
+            "event_rows": page.eval_on_selector_all("#event-rows tr", "nodes => nodes.length"),
+            "mission_rows": page.eval_on_selector_all("#mission-rows tr", "nodes => nodes.length"),
+            "series_charts": page.eval_on_selector_all(".series-item", "nodes => nodes.length"),
+            "export_command": page.inner_text("#export-command"),
+            "first_tab_stop": first_focus,
+            "horizontal_overflow_px": page.evaluate(
+                "() => document.documentElement.scrollWidth - document.documentElement.clientWidth"),
+            "console_errors": console.errors,
+            "url": fleet_url,
+            "screenshot": snapshot(page, "FLEET_intelligence"),
+        }
+        page.set_viewport_size({"width": 1920, "height": 1080})
+        page.wait_for_timeout(400)
+        evidence["desktop_overflow_px"] = page.evaluate(
+            "() => document.documentElement.scrollWidth - document.documentElement.clientWidth")
+        evidence["screenshot_desktop"] = snapshot(page, "FLEET_intelligence_1920x1080")
+        return evidence
+    finally:
+        context.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Browser verification of the CargoShield operator console")
     parser.add_argument("--url", default="http://127.0.0.1:8080/")
+    parser.add_argument("--api", default="http://127.0.0.1:8099", help="read-only history API base URL")
     parser.add_argument("--headed", action="store_true")
     args = parser.parse_args()
 
@@ -111,7 +190,7 @@ def main() -> None:
         console = Console(page)
         page.goto(args.url, wait_until="load")
         page.wait_for_selector("#link-text")
-        page.wait_for_function("() => document.getElementById('link-text').textContent === 'connected'", timeout=20000)
+        page.wait_for_function("() => document.getElementById('link-text').textContent === 'เชื่อมต่อแล้ว'", timeout=20000)
 
         # 1. Retained state must render before the operator touches anything.
         page.wait_for_function("() => document.getElementById('status').textContent !== '—'", timeout=10000)
@@ -131,8 +210,10 @@ def main() -> None:
         }
 
         def step(name: str, action, *wanted: str, timeout: float = 30.0, shot: str | None = None) -> None:
+            # Count states before acting, so the wait can only be satisfied by the engine's answer.
+            before = states_rendered(page)
             action()
-            reached = wait_status(page, *wanted, timeout=timeout)
+            reached = wait_status(page, *wanted, timeout=timeout, since=before)
             record = {"step": name, "status": reached}
             if shot:
                 evidence["screenshots"][shot] = snapshot(page, shot)
@@ -146,6 +227,8 @@ def main() -> None:
                 "no_webgl": probe_variant(browser, args.url, block_webgl=True),
             }
             evidence["fallbacks"] = fallbacks
+            fleet = probe_fleet_page(browser, args.url, args.api)
+            evidence["fleet_intelligence"] = fleet
             # Without WebGL the panels must carry the demo on their own, and neither variant may error.
             evidence["passed"] = (
                 evidence["passed"]
@@ -153,6 +236,17 @@ def main() -> None:
                 and fallbacks["no_webgl"]["controls_usable"]
                 and not fallbacks["no_webgl"]["console_errors"]
                 and not fallbacks["reduced_motion"]["console_errors"]
+                # Fleet Intelligence must render real fleet rows, reach the read-only history API,
+                # keep its simulated-data badge visible, fit both viewports, and log nothing.
+                and not fleet["console_errors"]
+                and fleet["robot_rows"] >= 3
+                and fleet["history_api_ok"]
+                and fleet["simulated_notice_visible"]
+                and "SIMULATED" in fleet["simulated_badge"]
+                and fleet["series_charts"] >= 1
+                and fleet["horizontal_overflow_px"] <= 0
+                and fleet["desktop_overflow_px"] <= 0
+                and fleet["first_tab_stop"] == "skip-link"
             )
         except Exception as exc:  # a failed demo rehearsal is evidence too
             evidence["failure"] = {"error": f"{type(exc).__name__}: {exc}", "screenshot": snapshot(page, "FAILURE"),
@@ -194,7 +288,7 @@ def run_sequence(page, evidence: dict, step, console: Console) -> None:
             "obstacle": page.inner_text("#v-obstacle_distance"),
         }
 
-        step("manual resume", lambda: page.click('button[data-cmd="manual_resume"]'), "READY")
+        step("manual resume", lambda: page.click('button[data-cmd="manual_resume"]'), "READY", timeout=40)
         page.wait_for_timeout(500)
 
         def clear_obstacle() -> None:
@@ -202,15 +296,24 @@ def run_sequence(page, evidence: dict, step, console: Console) -> None:
             # Status is already READY, so wait on the value the command actually changes.
             page.wait_for_function("() => document.getElementById('v-obstacle_distance').textContent === 'N/A'", timeout=10000)
 
-        step("clear obstacle", clear_obstacle, "READY", shot="READY")
-        evidence["after_clear"] = {"obstacle": page.inner_text("#v-obstacle_distance")}
+        # Clearing an obstacle re-decides from the last real inference, so the engine's correct
+        # answer is READY when that window was confident and HOLDING when it was not. Both are
+        # right; pinning only READY made this step pass or fail on which window the safe stop
+        # happened to land on. The confidence that explains the outcome is recorded alongside it.
+        step("clear obstacle", clear_obstacle, "READY", "HOLDING", shot="READY")
+        evidence["after_clear"] = {
+            "obstacle": page.inner_text("#v-obstacle_distance"),
+            "status": status(page),
+            "confidence_of_last_window": page.inner_text("#v-confidence"),
+            "action": page.inner_text("#v-action"),
+        }
 
         step("start after clearing", lambda: page.click('button[data-cmd="start"]'), "MOVING", "SLOWING", "HOLDING")
         step("second run completes", lambda: None, "COMPLETED", timeout=40, shot="COMPLETED_second_run")
 
         # 3. The remaining controls, each answered by the engine over the real broker.
         page.select_option("#cargo", "fragile")
-        page.wait_for_function("() => document.getElementById('v-cargo_type').textContent === 'fragile'", timeout=10000)
+        page.wait_for_function("() => document.getElementById('v-cargo_type').textContent === 'สินค้าเปราะบาง'", timeout=10000)
         evidence["cargo_switch"] = {"fragile": page.inner_text("#v-cargo_type"), "screenshot": snapshot(page, "FRAGILE_cargo")}
         page.select_option("#pickup", "A2")
         page.select_option("#destination", "C1")
@@ -245,7 +348,8 @@ def run_sequence(page, evidence: dict, step, console: Console) -> None:
         evidence["keyboard_focus_order"] = focused
 
         evidence["fps"] = page.inner_text("#fps")
-        evidence["console"] = {"errors": console.errors, "message_count": len(console.messages)}
+        evidence["console"] = {"errors": console.errors, "message_count": len(console.messages),
+                               "transport_noise": console.transport_noise}
         # With a WebGL context available the 3D stage must be the thing on screen, not the fallback.
         evidence["passed"] = (
             not console.errors

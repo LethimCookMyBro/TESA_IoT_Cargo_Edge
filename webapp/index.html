@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="th">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CargoShield · 3D Operator Console</title>
+<title>CargoShield · ศูนย์ควบคุมหุ่นยนต์ 3 มิติ</title>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./styles.css">
 <script type="importmap">
@@ -20,144 +20,156 @@
     </svg>
     <div>
       <h1>CargoShield</h1>
-      <p class="brand-sub">3D Operator Console</p>
+      <p class="brand-sub">ศูนย์ควบคุมหุ่นยนต์ 3 มิติ</p>
     </div>
   </div>
 
+  <nav class="nav" aria-label="สลับหน้าจอ">
+    <a href="./index.html" aria-current="page">ปฏิบัติการสด (Live Operations)</a>
+    <a href="./fleet.html">วิเคราะห์กองหุ่นยนต์ (Fleet Intelligence)</a>
+  </nav>
+
   <div class="topbar-stats">
     <div class="stat">
-      <span class="stat-key">Link</span>
-      <span class="stat-value"><span id="link-dot" class="dot dot-idle" aria-hidden="true"></span><span id="link-text">connecting…</span></span>
+      <span class="stat-key">การเชื่อมต่อ</span>
+      <span class="stat-value"><span id="link-dot" class="dot dot-idle" aria-hidden="true"></span><span id="link-text">กำลังเชื่อมต่อ…</span></span>
     </div>
     <div class="stat">
-      <span class="stat-key">Device</span>
+      <span class="stat-key">อุปกรณ์</span>
       <span class="stat-value" id="device-id">—</span>
     </div>
     <div class="stat">
-      <span class="stat-key">Mission</span>
+      <span class="stat-key">ภารกิจ</span>
       <span class="stat-value"><strong id="status" class="tone-idle" role="status" aria-live="polite">—</strong></span>
     </div>
     <div class="stat">
-      <span class="stat-key">Last state</span>
-      <span class="stat-value" id="age">no state yet</span>
+      <span class="stat-key">สถานะล่าสุด</span>
+      <span class="stat-value" id="age">ยังไม่มีข้อมูล</span>
     </div>
   </div>
 </header>
 
 <main class="layout">
-  <section class="stage" aria-label="Warehouse simulation">
-    <canvas id="stage" aria-label="3D view of the demo warehouse, the route and the cargo robot"></canvas>
+  <section class="stage" aria-label="ฉากจำลองคลังสินค้า">
+    <canvas id="stage" aria-label="ภาพสามมิติของคลังสินค้า เส้นทาง และหุ่นยนต์ขนส่ง"></canvas>
 
     <div class="stage-toolbar">
-      <button type="button" id="reset-camera" class="ghost">Reset camera</button>
-      <span class="chip" id="fps" title="Renderer frame rate">— fps</span>
+      <button type="button" id="reset-camera" class="ghost">รีเซ็ตมุมกล้อง</button>
+      <span class="chip" id="fps" title="อัตราเฟรมของภาพสามมิติ">— fps</span>
     </div>
 
-    <ul class="legend" aria-label="Route legend">
-      <li><i class="swatch" style="--swatch:#22c55e"></i>behind robot</li>
-      <li><i class="swatch" style="--swatch:#38bdf8"></i>current hop</li>
-      <li><i class="swatch" style="--swatch:#3b4c5e"></i>ahead of robot</li>
-      <li><i class="swatch" style="--swatch:#facc15"></i>slow region</li>
-      <li><i class="swatch" style="--swatch:#ef4444"></i>safe stop</li>
+    <ul class="legend" aria-label="คำอธิบายสีของเส้นทาง">
+      <li><i class="swatch" style="--swatch:#22c55e"></i>เส้นทางด้านหลัง</li>
+      <li><i class="swatch" style="--swatch:#38bdf8"></i>ช่วงที่กำลังเดินทาง</li>
+      <li><i class="swatch" style="--swatch:#3b4c5e"></i>เส้นทางข้างหน้า</li>
+      <li><i class="swatch" style="--swatch:#facc15"></i>เขตชะลอ</li>
+      <li><i class="swatch" style="--swatch:#ef4444"></i>เขตหยุดปลอดภัย</li>
     </ul>
 
-    <p class="stage-note">Visualization only — the Python engine owns every decision shown here.</p>
+    <p class="stage-note">ภาพจำลองเท่านั้น — การตัดสินใจทั้งหมดมาจาก Python Engine</p>
     <div id="stage-fallback" class="stage-fallback" hidden role="alert">
-      <strong>WebGL is unavailable in this browser.</strong>
-      <span>The console keeps working: all controls and telemetry below are live.</span>
+      <strong>เบราว์เซอร์นี้ไม่รองรับ WebGL</strong>
+      <span>ส่วนควบคุมและข้อมูลสถานะยังใช้งานได้ตามปกติ</span>
     </div>
   </section>
 
-  <aside class="side" aria-label="Controls and telemetry">
+  <aside class="side" aria-label="ส่วนควบคุมและข้อมูลสถานะ">
 
     <section class="panel">
-      <h2>Mission control</h2>
+      <h2>ควบคุมภารกิจ</h2>
       <div class="btn-row">
-        <button type="button" data-cmd="start" class="primary">Start</button>
-        <button type="button" data-cmd="pause">Pause</button>
-        <button type="button" data-cmd="manual_resume">Resume / Clear safe stop</button>
-        <button type="button" data-cmd="reset" class="danger">Reset</button>
+        <button type="button" data-cmd="start" class="primary">เริ่มภารกิจ</button>
+        <button type="button" data-cmd="pause">หยุดชั่วคราว</button>
+        <button type="button" data-cmd="manual_resume">ทำงานต่อ / ปลด Safe Stop</button>
+        <button type="button" data-cmd="reset" class="danger">รีเซ็ต</button>
       </div>
 
       <div class="field-grid">
         <p class="field">
-          <label for="cargo">Cargo type</label>
+          <label for="cargo">ประเภทสินค้า</label>
           <select id="cargo"></select>
         </p>
         <p class="field">
-          <label for="pickup">Pickup</label>
+          <label for="pickup">จุดรับสินค้า</label>
           <select id="pickup"></select>
         </p>
         <p class="field">
-          <label for="destination">Destination</label>
+          <label for="destination">จุดหมาย</label>
           <select id="destination"></select>
         </p>
       </div>
 
       <div class="obstacle">
-        <label for="obstacle">Simulated obstacle distance <output id="obstacle-value" for="obstacle">200</output> cm</label>
-        <input id="obstacle" type="range" min="0" max="200" step="5" value="200"
-               aria-describedby="obstacle-hint">
-        <p id="obstacle-hint" class="hint">Engine policy: ≤ 30 cm safe stop · ≤ 80 cm slow down.</p>
+        <label for="obstacle">ระยะสิ่งกีดขวางจำลอง</label>
+        <div class="obstacle-inputs">
+          <input id="obstacle" type="range" min="0" max="200" step="5" value="200"
+                 aria-describedby="obstacle-hint">
+          <label class="obstacle-number" for="obstacle-value">
+            <input id="obstacle-value" type="number" min="0" max="200" step="1" value="200"
+                   inputmode="decimal" aria-label="ระยะสิ่งกีดขวาง หน่วยเซนติเมตร">
+            <span>ซม.</span>
+          </label>
+        </div>
+        <p id="obstacle-hint" class="hint">นโยบายความปลอดภัย: ≤ 30 ซม. หยุดฉุกเฉิน · ≤ 80 ซม. ชะลอความเร็ว</p>
         <div class="btn-row">
-          <button type="button" id="obstacle-send">Set obstacle</button>
-          <button type="button" data-cmd="clear_obstacle">Clear</button>
+          <button type="button" id="obstacle-send">กำหนดสิ่งกีดขวาง</button>
+          <button type="button" data-cmd="clear_obstacle">ล้างค่า</button>
         </div>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Mission state</h2>
+      <h2>สถานะภารกิจ</h2>
       <dl class="readout">
-        <dt>Cargo</dt><dd id="v-cargo_type">—</dd>
-        <dt>Zone</dt><dd id="v-zone">—</dd>
-        <dt>Obstacle</dt><dd id="v-obstacle_distance">—</dd>
-        <dt>Source</dt><dd id="v-source">—</dd>
+        <dt>สินค้า</dt><dd id="v-cargo_type">—</dd>
+        <dt>โซน</dt><dd id="v-zone">—</dd>
+        <dt>สิ่งกีดขวาง</dt><dd id="v-obstacle_distance">—</dd>
+        <dt>แหล่งข้อมูล</dt><dd id="v-source">—</dd>
       </dl>
       <p class="field">
-        <label for="v-progress">Progress <output id="progress-value" for="v-progress">—</output></label>
+        <label for="v-progress">ความคืบหน้า <output id="progress-value" for="v-progress">—</output></label>
         <progress id="v-progress" max="1" value="0"></progress>
       </p>
     </section>
 
     <section class="panel">
-      <h2>Surface AI</h2>
+      <h2>AI จำแนกพื้นผิว</h2>
       <dl class="readout">
-        <dt>Class</dt><dd id="v-label">—</dd>
-        <dt>Confidence</dt><dd id="v-confidence">—</dd>
-        <dt>Vibration risk</dt><dd id="v-risk">—</dd>
+        <dt>ประเภทพื้น</dt><dd id="v-label">—</dd>
+        <dt>ความมั่นใจ</dt><dd id="v-confidence">—</dd>
+        <dt>ความเสี่ยงการสั่น</dt><dd id="v-risk">—</dd>
       </dl>
     </section>
 
     <section class="panel">
-      <h2>Safety decision</h2>
+      <h2>การตัดสินใจด้านความปลอดภัย</h2>
       <dl class="readout">
-        <dt>Action</dt><dd id="v-action">—</dd>
-        <dt>Speed ratio</dt><dd id="v-speed_ratio">—</dd>
-        <dt>Reason</dt><dd id="v-reason" class="wrap">—</dd>
+        <dt>การทำงาน</dt><dd id="v-action">—</dd>
+        <dt>อัตราความเร็ว</dt><dd id="v-speed_ratio">—</dd>
+        <dt>เหตุผล</dt><dd id="v-reason" class="wrap">—</dd>
       </dl>
     </section>
 
     <section class="panel">
-      <h2>Route &amp; risk</h2>
+      <h2>เส้นทางและความเสี่ยง</h2>
       <dl class="readout">
-        <dt>Nodes</dt><dd id="v-route_nodes">—</dd>
-        <dt>Policy</dt><dd id="v-route_reason" class="wrap">—</dd>
+        <dt>เส้นทาง</dt><dd id="v-route_nodes">—</dd>
+        <dt>นโยบาย</dt><dd id="v-route_reason" class="wrap">—</dd>
       </dl>
-      <ul id="risk-list" class="risk-list" aria-label="Observed zone risk"></ul>
+      <ul id="risk-list" class="risk-list" aria-label="ความเสี่ยงที่ตรวจพบในแต่ละโซน"></ul>
     </section>
 
     <section class="panel">
-      <h2>Event timeline</h2>
+      <h2>ลำดับเหตุการณ์</h2>
       <ol id="timeline" class="timeline" aria-live="polite" aria-relevant="additions"></ol>
     </section>
 
     <section class="panel">
-      <h2>Link diagnostics</h2>
+      <h2>ข้อมูลการเชื่อมต่อ</h2>
       <dl class="readout">
         <dt>Broker</dt><dd id="v-url" class="wrap">—</dd>
-        <dt>State topic</dt><dd id="v-topic" class="wrap">—</dd>
-        <dt>Last error</dt><dd id="v-error" class="wrap">none</dd>
+        <dt>State Topic</dt><dd id="v-topic" class="wrap">—</dd>
+        <dt>ข้อผิดพลาดล่าสุด</dt><dd id="v-error" class="wrap">ไม่มี</dd>
       </dl>
     </section>
   </aside>

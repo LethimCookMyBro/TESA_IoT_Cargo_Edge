@@ -25,14 +25,6 @@ const COLORS = {
 const CM_PER_METRE = 20;
 const ZONE_RADIUS = 2.8;
 
-const disposeTree = (root) => root.traverse((node) => {
-  node.geometry?.dispose();
-  for (const material of [node.material].flat().filter(Boolean)) {
-    for (const value of Object.values(material)) value?.isTexture && value.dispose();
-    material.dispose();
-  }
-});
-
 /** Text drawn to a canvas: no font file to ship and no glyph geometry to build. */
 function makeLabel(width = 256, height = 128) {
   const canvas = Object.assign(document.createElement('canvas'), { width, height });
@@ -537,13 +529,5 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
       controls.update();
     },
     onFps(handler) { onFps.add(handler); return () => onFps.delete(handler); },
-    dispose() {
-      running = false;
-      cancelAnimationFrame(raf);
-      observer.disconnect();
-      controls.dispose();
-      disposeTree(scene);
-      renderer.dispose();
-    },
   };
 }
