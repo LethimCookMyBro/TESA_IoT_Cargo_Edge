@@ -41,7 +41,8 @@ Presence here means the identifier exists in `out/webview/assets/SensorStudioApp
 | Transport | `mqtt-publisher`, `mqtt-subscriber`, `websocket-publisher`, `websocket-subscriber` | `connectivity` enabled |
 | Displays | `indicator`, `numeric-display`, `message-viewer`, `plotter`, `sparkline`, `radial-gauge`, `bar-meter`, `progress-bar` | `output` enabled |
 | Dashboard | `dashboard-output`, `dashboard-button`, `dashboard-led`, `dashboard-text`, `dashboard-gauge`, `dashboard-knob`, `dashboard-switch`, `dashboard-select`, `dashboard-slider`, `dashboard-status`, `dashboard-group`, `dashboard-tab`, `dashboard-theme` | **no — category disabled in every profile** |
-| Constants | `number-constant`, `boolean-constant`, `vector-constant`, `quaternion-constant` | **no — `generator` category disabled** |
+| Constants (scalar/boolean) | `number-constant`, `boolean-constant`, `float-constant`, `integer-constant` | **yes — these are in the `utility` category, which is enabled** |
+| Constants (vector/quaternion) | `vector-constant`, `quaternion-constant` | **no — these two are in `generator`, which is disabled** |
 | 3D scene | `model-select`, `model-viewer`, `scene-output`, `environment`, `camera-view` | **no — `scene` category and Stage pane disabled** |
 
 The 0.1.12 catalog additionally exposes BMI270 `accel`, `gyro`, and `euler` as `vector3`; `temp` and `samples` as `number`; and `quaternion` as `quaternion`. Its rendered primitive types include `number`, `boolean`, `string`, `vector3`, and `quaternion`. Configure exact handles in the currently active Studio UI before wiring; no handle names are inferred here.
@@ -51,7 +52,7 @@ The 0.1.12 catalog additionally exposes BMI270 `accel`, `gyro`, and `euler` as `
 - The active extension hosts MQTT TCP at `mqtt://127.0.0.1:1883` and MQTT-over-WebSocket at port `8883`, both from the same broker process. Anonymous CONNECT was verified locally on both, and a WebSocket subscriber receives the retained state on connect at path `/` **and** at `/mqtt`.
 - Studio's own connectivity preset is `bitstream-local-mqtt`: `host 127.0.0.1`, `port 8883`, `transport ws`, `path /`, described in the bundle as *"Embedded Aedes broker started with Bitstream Studio (MQTT-over-WebSocket)"*. Use those values in the node Inspector.
 - The Python engine uses MQTT TCP `1883` via `paho-mqtt`. The bundled Live-Data SDK is JavaScript only (`out/live-data-sdk/live-data.browser.js`, ESM, exports `LiveDataClient`); `webapp/` uses it over WebSocket `8883`. The proprietary T3D WebSocket (`ws://127.0.0.1:9998`) is not used; port `9001` is closed.
-- The existing DevKit demo topic is `device/{deviceId}/devkit-twin/telemetry`; its documented payload is JSON with a `channels` object. The examples do not document a BMI270 MQTT field schema, so CargoShield treats DevKit MQTT BMI data as unsupported until explicitly mapped.
+- `device/{deviceId}/devkit-twin/telemetry` is a **CargoShield-defined diagnostic topic, not an existing Bitstream or TESAIoT one.** A search of the installed extension returns zero occurrences of `devkit-twin/telemetry`; `devkit-twin` appears only as a workbench pane id. The TESAIoT platform uses `device/{DEVICE_ID}/telemetry` instead. No payload schema for this topic is documented anywhere, so CargoShield treats anything arriving on it as diagnostic-only and never infers from it.
 
 ## Not verified / intentionally unsupported
 
@@ -59,4 +60,4 @@ The 0.1.12 catalog additionally exposes BMI270 `accel`, `gyro`, and `euler` as `
 - No manually fabricated flow JSON is supplied.
 - A live Digital Twin model binding and a Sensor Studio canvas screenshot were not independently verified in this session.
 - **No flow has been built or run in the 0.1.9 UI by this repository.** The gating table above comes from the shipped profile JSON, not from the palette. Every node named as usable still needs one look at the Library before it is wired, and no claim about a working flow may be made until it is seen running.
-- The per-node palette category could not be read reliably out of the minified webview bundle, so this document does not state which category each individual node lands in — only which categories the profile enables.
+- Per-node palette categories **were** read out of the webview bundle during the Fleet Guardian audit by matching `{id:"…",category:"…",title:"…"}` records in `out/webview/index.js`. That is how the constants row above was corrected: scalar and boolean literals live in `utility` (enabled), not in `generator`. The enabled `sensor` category contains 20 nodes, including per-signal tap nodes and `devkit-pot-tap-1..4` / `devkit-btn-tap-0..4`, not the 4 listed earlier in this file.

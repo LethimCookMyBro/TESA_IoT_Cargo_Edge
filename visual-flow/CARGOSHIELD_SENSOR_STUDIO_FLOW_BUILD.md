@@ -58,6 +58,7 @@ Confirm every node above in the 0.1.9 Library before wiring it. This sheet lists
 
 - **Any on-canvas control** (cargo select, obstacle slider, Start/Pause/Reset/Resume buttons, pickup/destination selects) — the `dashboard` category is off. Use `webapp/index.html`; its payloads live in `webapp/controls.js` and are covered by `tests/test_webapp_controls.py`.
 - **Digital Twin / 3D** (`model-select`, `model-viewer`, `scene-output`) — the `scene` category and the Stage 3D pane are off.
-- **Constant nodes** (`number-constant`, `boolean-constant`) — the `generator` category is off, so a literal cannot be introduced on-canvas either.
+- **Vector/quaternion constants** (`vector-constant`, `quaternion-constant`) — these two are in the `generator` category, which is off.
+  Scalar and boolean literals (`number-constant`, `boolean-constant`, `float-constant`, `integer-constant`) are in `utility`, which **is** enabled, so a literal *can* be introduced on-canvas. An earlier revision of this sheet said otherwise and was wrong.
 
 Every Studio transport node must use the exact command/state topic above. Set MQTT details in the node inspector rather than editing a generated JSON file. Studio's own connection preset is `bitstream-local-mqtt`: `127.0.0.1`, port `8883`, transport `ws`, path `/`.

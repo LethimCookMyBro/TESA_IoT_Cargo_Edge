@@ -4,6 +4,6 @@ CargoShield now includes a local MQTT bridge at `cargo.mqtt_service`. It uses Bi
 
 - commands: `cargoshield/cargo-robot-01/command`
 - live state: `cargoshield/cargo-robot-01/state`
-- existing DevKit telemetry: `device/+/devkit-twin/telemetry` (diagnostic-only until BMI270 fields are explicitly mapped)
+- CargoShield-defined diagnostic topic: `device/+/devkit-twin/telemetry` — **not** an existing Bitstream or TESAIoT topic (it appears nowhere in the installed extension). Diagnostic-only; nothing is inferred from it.
 
 See [the capability audit](BITSTREAM_VISUAL_FLOW_CAPABILITIES.md) and [runbook](CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md). The bridge is local and anonymous only because the active local broker accepted a credential-free local connection; do not expose it on an untrusted network.
