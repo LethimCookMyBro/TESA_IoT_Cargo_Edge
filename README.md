@@ -23,10 +23,10 @@ CargoShield AI จึงเพิ่มชั้นการปกป้อง�
 (สังเคราะห์ด้วยเสียง Neural TTS) ตัดต่อจากภาพหน้าจอจริงของระบบ
 (`reports/screenshots/after/`) ไล่ตามลำดับภารกิจจริง ไม่ใช่แอนิเมชันสมมติ
 
-[![เปิดวิดีโอแนะนำ CargoShield AI](reports/screenshots/after/IDLE.png)](reports/media/cargoshield_overview.mp4)
+[![รับชมวิดีโอแนะนำ CargoShield AI บน YouTube](https://img.youtube.com/vi/MUtI82VvHp8/maxresdefault.jpg)](https://youtu.be/MUtI82VvHp8)
 
-คลิกภาพเพื่อเปิดวิดีโอ หรือ
-[ดาวน์โหลดไฟล์ MP4 โดยตรง](reports/media/cargoshield_overview.mp4)
+[▶ รับชมวิดีโอบน YouTube](https://youtu.be/MUtI82VvHp8) ·
+[ดาวน์โหลดไฟล์ MP4 สำรอง](reports/media/cargoshield_overview.mp4)
 
 ## ปัญหาที่ต้องการแก้
 

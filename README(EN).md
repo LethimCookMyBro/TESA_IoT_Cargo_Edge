@@ -26,10 +26,10 @@ A walkthrough of what CargoShield AI is and how it works, with Thai voice narrat
 (`reports/screenshots/after/`) in mission order — not a mock-up animation. On-screen
 captions stay bilingual (English + Thai).
 
-[![Open the CargoShield AI overview video](reports/screenshots/after/IDLE.png)](reports/media/cargoshield_overview.mp4)
+[![Watch the CargoShield AI overview on YouTube](https://img.youtube.com/vi/MUtI82VvHp8/maxresdefault.jpg)](https://youtu.be/MUtI82VvHp8)
 
-Click the image to open the video, or
-[download the MP4 directly](reports/media/cargoshield_overview.mp4).
+[▶ Watch on YouTube](https://youtu.be/MUtI82VvHp8) ·
+[download the backup MP4](reports/media/cargoshield_overview.mp4).
 
 ## The problem
 
