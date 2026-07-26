@@ -1,0 +1,142 @@
+{
+  "minimum_confidence": 0.55,
+  "selected_on": "validation",
+  "selection_rule": "target selective accuracy 0.75 unreachable at coverage >= 0.35; best available chosen",
+  "target_selective_accuracy": 0.75,
+  "min_coverage": 0.35,
+  "validation_samples": 1824,
+  "validation_groups": 17,
+  "coverage_at_threshold": 0.3607456140350877,
+  "selective_accuracy_at_threshold": 0.5030395136778115,
+  "sweep": [
+    {
+      "threshold": 0.2,
+      "coverage": 1.0,
+      "accepted": 1824,
+      "rejected": 0,
+      "selective_accuracy": 0.40789473684210525,
+      "accepted_errors": 1080
+    },
+    {
+      "threshold": 0.25,
+      "coverage": 0.9879385964912281,
+      "accepted": 1802,
+      "rejected": 22,
+      "selective_accuracy": 0.4095449500554939,
+      "accepted_errors": 1064
+    },
+    {
+      "threshold": 0.3,
+      "coverage": 0.9265350877192983,
+      "accepted": 1690,
+      "rejected": 134,
+      "selective_accuracy": 0.414792899408284,
+      "accepted_errors": 989
+    },
+    {
+      "threshold": 0.35,
+      "coverage": 0.8289473684210527,
+      "accepted": 1512,
+      "rejected": 312,
+      "selective_accuracy": 0.42857142857142855,
+      "accepted_errors": 864
+    },
+    {
+      "threshold": 0.4,
+      "coverage": 0.7154605263157895,
+      "accepted": 1305,
+      "rejected": 519,
+      "selective_accuracy": 0.44904214559386973,
+      "accepted_errors": 719
+    },
+    {
+      "threshold": 0.45,
+      "coverage": 0.5882675438596491,
+      "accepted": 1073,
+      "rejected": 751,
+      "selective_accuracy": 0.4659832246039143,
+      "accepted_errors": 573
+    },
+    {
+      "threshold": 0.5,
+      "coverage": 0.4621710526315789,
+      "accepted": 843,
+      "rejected": 981,
+      "selective_accuracy": 0.4744958481613286,
+      "accepted_errors": 443
+    },
+    {
+      "threshold": 0.55,
+      "coverage": 0.3607456140350877,
+      "accepted": 658,
+      "rejected": 1166,
+      "selective_accuracy": 0.5030395136778115,
+      "accepted_errors": 327
+    },
+    {
+      "threshold": 0.6,
+      "coverage": 0.27850877192982454,
+      "accepted": 508,
+      "rejected": 1316,
+      "selective_accuracy": 0.5177165354330708,
+      "accepted_errors": 245
+    },
+    {
+      "threshold": 0.65,
+      "coverage": 0.20833333333333334,
+      "accepted": 380,
+      "rejected": 1444,
+      "selective_accuracy": 0.5684210526315789,
+      "accepted_errors": 164
+    },
+    {
+      "threshold": 0.7,
+      "coverage": 0.15953947368421054,
+      "accepted": 291,
+      "rejected": 1533,
+      "selective_accuracy": 0.6219931271477663,
+      "accepted_errors": 110
+    },
+    {
+      "threshold": 0.75,
+      "coverage": 0.12006578947368421,
+      "accepted": 219,
+      "rejected": 1605,
+      "selective_accuracy": 0.6484018264840182,
+      "accepted_errors": 77
+    },
+    {
+      "threshold": 0.8,
+      "coverage": 0.08333333333333333,
+      "accepted": 152,
+      "rejected": 1672,
+      "selective_accuracy": 0.756578947368421,
+      "accepted_errors": 37
+    },
+    {
+      "threshold": 0.85,
+      "coverage": 0.054276315789473686,
+      "accepted": 99,
+      "rejected": 1725,
+      "selective_accuracy": 0.8181818181818182,
+      "accepted_errors": 18
+    },
+    {
+      "threshold": 0.9,
+      "coverage": 0.03508771929824561,
+      "accepted": 64,
+      "rejected": 1760,
+      "selective_accuracy": 0.84375,
+      "accepted_errors": 10
+    },
+    {
+      "threshold": 0.95,
+      "coverage": 0.01425438596491228,
+      "accepted": 26,
+      "rejected": 1798,
+      "selective_accuracy": 1.0,
+      "accepted_errors": 0
+    }
+  ],
+  "provenance": "DATASET \u2014 real stored CareerCon windows, group-disjoint validation split. No simulator-generated label was used to choose this threshold, and the held-out test split was not read."
+}

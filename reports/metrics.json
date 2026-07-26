@@ -3,7 +3,36 @@
   "weighted_f1": 0.5448699268972353,
   "test_samples": 1454,
   "test_groups": 15,
-  "batch_seconds": 0.10887499999989814,
-  "single_window_ms": 0.07487964236581715,
-  "model_bytes": 53058065
+  "batch_seconds": 0.05803880000166828,
+  "single_window_ms": 0.0399166437425504,
+  "model_bytes": 53058065,
+  "selective": {
+    "available": true,
+    "threshold": 0.55,
+    "threshold_selected_on": "validation",
+    "coverage": 0.5275103163686382,
+    "accepted": 767,
+    "rejected_to_hold_uncertain": 687,
+    "selective_accuracy": 0.7209908735332464,
+    "accuracy_if_nothing_rejected": 0.5742778541953233,
+    "note": "rejected windows become HOLD_UNCERTAIN, which stops the robot rather than acting on a low-confidence prediction"
+  },
+  "worst_classes_by_f1": [
+    {
+      "label": "hard_tiles_large_space",
+      "f1": 0.04580152671755725,
+      "support": 128.0
+    },
+    {
+      "label": "soft_tiles",
+      "f1": 0.45528455284552843,
+      "support": 127.0
+    },
+    {
+      "label": "fine_concrete",
+      "f1": 0.45569620253164556,
+      "support": 127.0
+    }
+  ],
+  "provenance": "DATASET \u2014 real stored CareerCon windows, group-disjoint held-out test split. No simulator-generated label is included. Timings are host batch prediction, not board inference."
 }

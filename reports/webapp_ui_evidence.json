@@ -1,5 +1,5 @@
 {
-  "url": "http://127.0.0.1:8080/",
+  "url": "http://127.0.0.1:8080/?device=ui-verify",
   "steps": [
     {
       "step": "reset",
@@ -66,29 +66,32 @@
   },
   "retained_state_on_open": {
     "status": "IDLE",
-    "age": "just now",
+    "age": "\u0e40\u0e21\u0e37\u0e48\u0e2d\u0e2a\u0e31\u0e01\u0e04\u0e23\u0e39\u0e48",
     "rendered_before_any_click": true
   },
   "webgl": {
     "canvas_visible": true,
     "fallback_shown": false,
-    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4050 Laptop GPU (0x000028A1) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
   },
   "slow_down": {
     "action": "SLOW_DOWN",
     "speed_ratio": "0.500",
-    "obstacle": "50 cm \u00b7 slow region"
+    "obstacle": "\u0e08\u0e33\u0e25\u0e2d\u0e07 50 \u0e0b\u0e21. \u00b7 \u0e40\u0e02\u0e15\u0e0a\u0e30\u0e25\u0e2d"
   },
   "safe_stop": {
     "action": "SAFE_STOP",
     "speed_ratio": "0",
-    "obstacle": "20 cm \u00b7 stop region"
+    "obstacle": "\u0e08\u0e33\u0e25\u0e2d\u0e07 20 \u0e0b\u0e21. \u00b7 \u0e40\u0e02\u0e15\u0e2b\u0e22\u0e38\u0e14\u0e1b\u0e25\u0e2d\u0e14\u0e20\u0e31\u0e22"
   },
   "after_clear": {
-    "obstacle": "N/A"
+    "obstacle": "N/A",
+    "status": "READY",
+    "confidence_of_last_window": "0.729",
+    "action": "MOVE"
   },
   "cargo_switch": {
-    "fragile": "fragile",
+    "fragile": "\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e40\u0e1b\u0e23\u0e32\u0e30\u0e1a\u0e32\u0e07",
     "screenshot": "reports/screenshots/FRAGILE_cargo.png"
   },
   "route_switch": {
@@ -105,19 +108,20 @@
     "screenshot": "reports/screenshots/READY_laptop_1440x900.png"
   },
   "keyboard_focus_order": [
+    "A",
+    "A",
     "reset-camera",
     "BUTTON",
     "BUTTON",
     "BUTTON",
     "BUTTON",
-    "cargo",
-    "pickup",
-    "destination"
+    "cargo"
   ],
-  "fps": "178 fps",
+  "fps": "\u2014 fps",
   "console": {
     "errors": [],
-    "message_count": 0
+    "message_count": 0,
+    "transport_noise": []
   },
   "passed": true,
   "fallbacks": {
@@ -139,5 +143,25 @@
       "console_errors": [],
       "screenshot": "reports/screenshots/fallback_no_webgl.png"
     }
+  },
+  "fleet_intelligence": {
+    "robot_rows": 3,
+    "fleet_total": "3",
+    "history_api": "postgresql://cargoshield@127.0.0.1:5433/cargoshield",
+    "history_api_ok": true,
+    "simulated_badge": "SIMULATED \u00b7 \u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e08\u0e33\u0e25\u0e2d\u0e07",
+    "simulated_notice_visible": true,
+    "zone_rows": 4,
+    "event_rows": 50,
+    "mission_rows": 6,
+    "series_charts": 5,
+    "export_command": ".\\.venv\\Scripts\\python.exe -m cargo.export --format jsonl",
+    "first_tab_stop": "skip-link",
+    "horizontal_overflow_px": 0,
+    "console_errors": [],
+    "url": "http://127.0.0.1:8080/fleet.html?api=http%3A%2F%2F127.0.0.1%3A8099",
+    "screenshot": "reports/screenshots/FLEET_intelligence.png",
+    "desktop_overflow_px": 0,
+    "screenshot_desktop": "reports/screenshots/FLEET_intelligence_1920x1080.png"
   }
 }

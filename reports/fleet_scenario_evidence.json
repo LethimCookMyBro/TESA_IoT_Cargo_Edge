@@ -1,0 +1,244 @@
+{
+  "broker": "127.0.0.1:1883",
+  "seed": 7,
+  "samples_per_robot": 24,
+  "interval_s": 0.05,
+  "provenance": "SIMULATED \u2014 synthesised catalog-unit channels; predictions are real model output over real stored CareerCon windows. No physical robot, no real localization, no real distance sensor.",
+  "robots": {
+    "robot-alpha": "healthy robot on a low-risk route",
+    "robot-bravo": "accumulates vibration and impact exposure, then re-plans a safer next route",
+    "robot-charlie": "stale, malformed, out-of-order and contradictory sensor data"
+  },
+  "database": {
+    "reachable": true,
+    "reason": "reachable",
+    "identity": "postgresql://cargoshield@127.0.0.1:5433/cargoshield"
+  },
+  "first_routes": {
+    "robot-alpha": [
+      "A1",
+      "A2",
+      "B2",
+      "C2"
+    ],
+    "robot-bravo": [
+      "A1",
+      "A2",
+      "B2",
+      "C2"
+    ],
+    "robot-charlie": [
+      "A1",
+      "A2",
+      "B2",
+      "C2"
+    ]
+  },
+  "historian_before_outage": {
+    "database": "postgresql://cargoshield@127.0.0.1:5433/cargoshield",
+    "connected": true,
+    "queue_depth": 0,
+    "queue_capacity": 5000,
+    "dropped": 0,
+    "written": 73,
+    "retries": 0,
+    "failed_rows": 0,
+    "last_error": null
+  },
+  "database_outage": {
+    "held_for_s": 1.53,
+    "samples_decided_before": 19,
+    "samples_decided_during_outage": 21,
+    "safety_core_kept_deciding": true,
+    "historian_during_outage": {
+      "database": "postgresql://cargoshield@127.0.0.1:1/cargoshield",
+      "connected": false,
+      "queue_depth": 50,
+      "queue_capacity": 50,
+      "dropped": 153,
+      "written": 0,
+      "retries": 0,
+      "failed_rows": 0,
+      "last_error": null
+    },
+    "note": "the writer could not reach any database; decisions continued unchanged"
+  },
+  "elapsed_s": 2.75,
+  "published": {
+    "robot-alpha": 24,
+    "robot-bravo": 24,
+    "robot-charlie": 29
+  },
+  "publisher_errors": {},
+  "per_robot": {
+    "robot-alpha": {
+      "seen": true,
+      "profile": "healthy",
+      "status": "MOVING",
+      "health_state": "HEALTHY",
+      "health_reasons": [],
+      "quarantined_channels": [],
+      "latched_stop": false,
+      "latch_reason": "",
+      "accepted_samples": 24,
+      "rejected_samples": 0,
+      "duplicates": 0,
+      "out_of_order": 0,
+      "decision": {
+        "action": "MOVE",
+        "speed_ratio": 0.75,
+        "reason": "standard cargo with medium vibration risk",
+        "manual_resume_required": false
+      }
+    },
+    "robot-bravo": {
+      "seen": true,
+      "profile": "high_vibration",
+      "status": "SAFE_STOPPED",
+      "health_state": "HEALTHY",
+      "health_reasons": [],
+      "quarantined_channels": [],
+      "latched_stop": true,
+      "latch_reason": "sensor health is UNSAFE: bmi270.accelX jumped 20.0015 m/s^2 in one sample (impact or fault)",
+      "accepted_samples": 24,
+      "rejected_samples": 0,
+      "duplicates": 0,
+      "out_of_order": 0,
+      "decision": {
+        "action": "SAFE_STOP",
+        "speed_ratio": 0.0,
+        "reason": "manual resume required after a safe stop",
+        "manual_resume_required": true
+      }
+    },
+    "robot-charlie": {
+      "seen": true,
+      "profile": "faulty",
+      "status": "SAFE_STOPPED",
+      "health_state": "UNSAFE",
+      "health_reasons": [
+        "bmi270.temperatureC jumped 42.8 degC in one sample (impact or fault)",
+        "sht40.temperatureC jumped 20.64 degC in one sample (impact or fault)",
+        "temperature channels disagree by 65.0 degC: bmi270.temperatureC=70.0, sht40.temperatureC=5.0"
+      ],
+      "quarantined_channels": [],
+      "latched_stop": true,
+      "latch_reason": "sensor health is UNSAFE: bmi270.accelY is not finite: nan",
+      "accepted_samples": 20,
+      "rejected_samples": 9,
+      "duplicates": 9,
+      "out_of_order": 0,
+      "decision": {
+        "action": "SAFE_STOP",
+        "speed_ratio": 0.0,
+        "reason": "manual resume required after a safe stop",
+        "manual_resume_required": true
+      }
+    }
+  },
+  "isolation": {
+    "healthy_robot_state": "HEALTHY",
+    "healthy_robot_latched": false,
+    "faulty_robot_state": "UNSAFE",
+    "faulty_robot_latched": true,
+    "faulty_robot_rejected_samples": 9,
+    "healthy_unaffected_by_faulty": true
+  },
+  "next_mission_route": {
+    "robot_id": "robot-bravo",
+    "route_during_first_mission": [
+      "A1",
+      "A2",
+      "B2",
+      "C2"
+    ],
+    "route_still_unchanged_at_end_of_first_mission": true,
+    "zone_risk_after_first_mission": {
+      "A1": {
+        "score": 0.7444905865,
+        "observations": 6,
+        "surface": "soft_pvc",
+        "updated_ms": 1785045452780
+      },
+      "A2": {
+        "score": 0.8202788471666667,
+        "observations": 6,
+        "surface": "tiled",
+        "updated_ms": 1785045453153
+      },
+      "B2": {
+        "score": 0.8202788471666667,
+        "observations": 6,
+        "surface": "tiled",
+        "updated_ms": 1785045453524
+      },
+      "C2": {
+        "score": 0.8202788471666667,
+        "observations": 6,
+        "surface": "hard_tiles",
+        "updated_ms": 1785045453900
+      }
+    },
+    "route_planned_for_next_mission": [
+      "A1",
+      "B1",
+      "C1",
+      "C2"
+    ],
+    "next_route_differs": true
+  },
+  "historian": {
+    "database": "postgresql://cargoshield@127.0.0.1:5433/cargoshield",
+    "connected": true,
+    "queue_depth": 0,
+    "queue_capacity": 5000,
+    "dropped": 0,
+    "written": 0,
+    "retries": 0,
+    "failed_rows": 0,
+    "last_error": null
+  },
+  "latency": {
+    "samples": 68,
+    "p50_ms": 0.3375,
+    "p95_ms": 0.5984,
+    "max_ms": 1.0176,
+    "mean_ms": 0.3582,
+    "measurement": "local simulator ingest-to-decision, not board performance"
+  },
+  "fleet_status_counts": {
+    "online": 1,
+    "degraded": 0,
+    "offline": 0,
+    "stopped": 2
+  },
+  "database_rows": {
+    "robots": 5,
+    "missions": 6,
+    "telemetry_samples": 328,
+    "model_predictions": 332,
+    "derived_features": 332,
+    "fleet_events": 449,
+    "maintenance_findings": 0
+  },
+  "database_rows_by_robot": {
+    "robot-02": 10,
+    "robot-alpha": 119,
+    "robot-bravo": 119,
+    "robot-charlie": 80
+  },
+  "checks": {
+    "three_robots_ingested": true,
+    "healthy_robot_stayed_healthy": true,
+    "faulty_robot_left_healthy_state": true,
+    "faulty_robot_rejected_bad_samples": true,
+    "impact_latched_a_safe_stop": true,
+    "running_route_never_changed": true,
+    "next_mission_route_differs": true,
+    "no_publisher_errors": true,
+    "history_written_for_every_robot": true,
+    "safety_core_survived_database_outage": true,
+    "outage_was_counted_not_silent": true
+  },
+  "passed": true
+}
