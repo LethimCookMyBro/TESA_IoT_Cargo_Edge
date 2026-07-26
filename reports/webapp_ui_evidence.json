@@ -153,7 +153,7 @@
     "simulated_notice_visible": true,
     "zone_rows": 4,
     "event_rows": 50,
-    "mission_rows": 6,
+    "mission_rows": 26,
     "series_charts": 5,
     "export_command": ".\\.venv\\Scripts\\python.exe -m cargo.export --format jsonl",
     "first_tab_stop": "skip-link",

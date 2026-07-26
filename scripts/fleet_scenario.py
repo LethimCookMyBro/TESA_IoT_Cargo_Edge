@@ -18,6 +18,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from uuid import uuid4
 
 import paho.mqtt.client as mqtt
 
@@ -93,6 +94,21 @@ def _wait(predicate, timeout: float = 20.0) -> bool:
     return predicate()
 
 
+def _database_rows_for_missions(connection, mission_ids: list[str]) -> dict[str, int]:
+    """Telemetry rows belonging to this invocation, never accumulated rows from older runs."""
+    return dict(connection.execute(
+        "SELECT robot_id, count(*) FROM telemetry_samples"
+        " WHERE mission_id = ANY(%s) GROUP BY robot_id ORDER BY robot_id",
+        (mission_ids,),
+    ).fetchall())
+
+
+def _current_run_history_complete(rows: dict[str, int], expected_robot_ids: set[str],
+                                  *, writer_written: int) -> bool:
+    return (writer_written > 0 and set(rows) == expected_robot_ids
+            and all(rows[robot_id] > 0 for robot_id in expected_robot_ids))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="CargoShield multi-robot fleet scenario")
     parser.add_argument("--host", default="127.0.0.1")
@@ -103,8 +119,14 @@ def main() -> None:
     parser.add_argument("--no-database", action="store_true", help="run with persistence disabled")
     parser.add_argument("--out", default="reports/fleet_scenario_evidence.json")
     args = parser.parse_args()
+    run_id = f"run-{int(time.time() * 1000)}-{uuid4().hex[:8]}"
+    first_mission_ids = {
+        robot.robot_id: f"{run_id}-m1-{robot.robot_id}" for robot in FLEET
+    }
+    current_run_mission_ids = list(first_mission_ids.values())
 
     evidence: dict = {
+        "run_id": run_id,
         "broker": f"{args.host}:{args.port}", "seed": args.seed,
         "samples_per_robot": args.samples, "interval_s": args.interval,
         "provenance": "SIMULATED — synthesised catalog-unit channels; predictions are real model "
@@ -133,7 +155,7 @@ def main() -> None:
         for robot in FLEET:
             route = guardian.start_mission(robot.robot_id, pickup=robot.pickup,
                                            destination=robot.destination, cargo_type=robot.cargo_type,
-                                           mission_id=f"m1-{robot.robot_id}")
+                                           mission_id=first_mission_ids[robot.robot_id])
             first_routes[robot.robot_id] = list(route.nodes) if route else None
         evidence["first_routes"] = first_routes
 
@@ -148,22 +170,32 @@ def main() -> None:
 
         # --- 3. Mid-run, take the historian's database away. The Safety Core must not notice.
         outage_started = None
-        time.sleep(max(0.4, args.samples * args.interval * 0.3))
+        total_publishes = len(publishers) * args.samples
+        if not _wait(lambda: sum(publisher.published for publisher in publishers)
+                     >= max(len(publishers), int(total_publishes * 0.3))):
+            raise RuntimeError("publishers did not reach the pre-outage checkpoint")
         if reachable:
             outage_started = time.monotonic()
             decisions_before = sum(record.samples for record in guardian.robots.values())
-            historian.flush(timeout=3.0)
-            evidence["historian_before_outage"] = historian.health()
-            historian.stop(timeout=2.0)
-            # A closed port is a real connection failure: connect() fails, the writer backs off,
-            # the bounded queue fills and then drops, and every drop is counted.
             broken = db.Settings(host="127.0.0.1", port=1, database="cargoshield",
                                  user="cargoshield", password="unused")
             outage_historian = Historian(broken, max_queue=50)
             outage_historian.start()
             guardian.sink = outage_historian.submit
-            time.sleep(max(0.5, args.samples * args.interval * 0.4))
+            service.historian = outage_historian
+            historian.flush(timeout=3.0)
+            evidence["historian_before_outage"] = historian.health()
+            historian.stop(timeout=2.0)
+            # A closed port is a real connection failure: connect() fails, the writer backs off,
+            # the bounded queue fills and then drops, and every drop is counted.
+            if not _wait(lambda: sum(publisher.published for publisher in publishers)
+                         >= max(len(publishers), int(total_publishes * 0.7))):
+                raise RuntimeError("publishers did not reach the outage checkpoint")
             decisions_during = sum(record.samples for record in guardian.robots.values())
+            historian = Historian()
+            historian.start()
+            guardian.sink = historian.submit
+            service.historian = historian
             outage_historian.stop(timeout=1.0)
             evidence["database_outage"] = {
                 "held_for_s": round(time.monotonic() - outage_started, 2),
@@ -173,10 +205,6 @@ def main() -> None:
                 "historian_during_outage": outage_historian.health(),
                 "note": "the writer could not reach any database; decisions continued unchanged",
             }
-            historian = Historian()
-            historian.start()
-            guardian.sink = historian.submit
-            service.historian = historian
 
         for publisher in publishers:
             publisher.join(timeout=args.samples * args.interval + 30)
@@ -219,7 +247,9 @@ def main() -> None:
         bravo = guardian.robots["robot-bravo"]
         route_before = list(bravo.route.nodes) if bravo.route else None
         replanned = guardian.start_mission("robot-bravo", pickup="A1", destination="C2",
-                                           cargo_type="fragile", mission_id="m2-robot-bravo")
+                                           cargo_type="fragile",
+                                           mission_id=f"{run_id}-m2-robot-bravo")
+        current_run_mission_ids.append(f"{run_id}-m2-robot-bravo")
         evidence["next_mission_route"] = {
             "robot_id": "robot-bravo",
             "route_during_first_mission": first_routes["robot-bravo"],
@@ -232,21 +262,35 @@ def main() -> None:
         # --- 7. Persistence and latency.
         historian.flush(timeout=10)
         # Three writer instances span this run (before, during and after the outage), so the
-        # per-instance counters below are phases, not a fleet total. `database_rows` is the total.
+        # per-instance counters below are phases, not a fleet total.
         evidence["historian"] = historian.health()
+        phases = {
+            "before_outage": evidence.get("historian_before_outage"),
+            "during_outage": evidence.get("database_outage", {}).get("historian_during_outage"),
+            "after_outage": evidence["historian"],
+        }
+        evidence["historian_phases"] = {name: health for name, health in phases.items() if health}
+        evidence["historian_totals"] = {
+            field: sum(health[field] for health in evidence["historian_phases"].values())
+            for field in ("dropped", "written", "retries", "failed_rows")
+        }
         evidence["latency"] = guardian.latency_summary()
         evidence["fleet_status_counts"] = guardian.fleet_status()["counts"]
 
         if reachable:
             with db.connect() as connection:
-                evidence["database_rows"] = {
+                evidence["database_rows_total"] = {
                     table: connection.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
                     for table in ("robots", "missions", "telemetry_samples", "model_predictions",
                                   "derived_features", "fleet_events", "maintenance_findings")
                 }
-                evidence["database_rows_by_robot"] = dict(connection.execute(
-                    "SELECT robot_id, count(*) FROM telemetry_samples GROUP BY robot_id ORDER BY robot_id"
-                ).fetchall())
+                evidence["database_rows_by_robot"] = _database_rows_for_missions(
+                    connection, current_run_mission_ids)
+                evidence["database_rows_scope"] = {
+                    "run_id": run_id,
+                    "mission_ids": current_run_mission_ids,
+                    "note": "acceptance evidence includes only telemetry from this invocation",
+                }
     finally:
         engine.loop_stop(); engine.disconnect()
         historian.stop(timeout=5.0)
@@ -262,7 +306,13 @@ def main() -> None:
         "no_publisher_errors": not evidence["publisher_errors"],
     }
     if reachable:
-        checks["history_written_for_every_robot"] = len(evidence.get("database_rows_by_robot", {})) >= 3
+        expected_robot_ids = {robot.robot_id for robot in FLEET}
+        checks["history_written_for_every_robot"] = _current_run_history_complete(
+            evidence.get("database_rows_by_robot", {}),
+            expected_robot_ids,
+            writer_written=evidence["historian_totals"]["written"],
+        )
+        checks["post_outage_historian_wrote"] = evidence["historian"]["written"] > 0
         checks["safety_core_survived_database_outage"] = evidence["database_outage"]["safety_core_kept_deciding"]
         checks["outage_was_counted_not_silent"] = (
             evidence["database_outage"]["historian_during_outage"]["dropped"] > 0

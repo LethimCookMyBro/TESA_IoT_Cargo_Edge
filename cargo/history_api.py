@@ -20,6 +20,7 @@ from urllib.parse import parse_qs, urlparse
 from . import contracts, db
 
 DEFAULT_LIMIT, MAX_LIMIT = 200, 5000
+MAX_REJECTED_BODY_BYTES = 64 * 1024
 
 
 def _limit(params: dict[str, list[str]]) -> int:
@@ -150,10 +151,21 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(raw)
 
     def _reject_write(self) -> None:
+        # Closing a Windows TCP socket with unread request bytes can reset the connection before
+        # the client receives this 405. Drain ordinary local requests; cap it so a false
+        # Content-Length cannot block a server thread indefinitely.
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except (TypeError, ValueError):
+            length = 0
+        if 0 < length <= MAX_REJECTED_BODY_BYTES:
+            self.rfile.read(length)
         self.send_response(405)
         self.send_header("Allow", "GET, OPTIONS")
         self.send_header("Content-Length", "0")
+        self.send_header("Connection", "close")
         self.end_headers()
+        self.close_connection = True
 
     # Every mutating verb is refused by the transport itself, not by a check inside a handler.
     do_POST = do_PUT = do_PATCH = do_DELETE = _reject_write

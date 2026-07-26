@@ -7,6 +7,7 @@ reported as passed. Start it with `docker compose up -d` then `python -m cargo.d
 
 from __future__ import annotations
 
+import io
 import json
 import tempfile
 import threading
@@ -20,8 +21,9 @@ from cargo import contracts, db
 from cargo.export import ExportFilters, export
 from cargo.fleet import FleetGuardian, sample
 from cargo.historian import Historian
-from cargo.history_api import serve
+from cargo.history_api import Handler, serve
 from cargo.maintenance import BOUNDARY, MaintenanceContext
+from scripts.fleet_scenario import _current_run_history_complete, _database_rows_for_missions
 
 TEST_DATABASE = "cargoshield_test"
 GOOD = {"bmi270.accelX": 0.1, "bmi270.accelZ": 9.81}
@@ -85,6 +87,22 @@ def _seed(robots=("robot-alpha", "robot-bravo", "robot-charlie"), steps=6) -> Hi
     historian.flush(timeout=15)
     historian.stop(timeout=5)
     return historian
+
+
+class HistoryTransportUnitTests(unittest.TestCase):
+    def test_rejected_write_drains_its_small_body_before_replying(self):
+        handler = object.__new__(Handler)
+        handler.headers = {"Content-Length": "2"}
+        handler.rfile = io.BytesIO(b"{}")
+        handler.wfile = io.BytesIO()
+        handler.request_version = "HTTP/1.1"
+        handler.command = "PUT"
+        handler.path = "/api/fleet"
+        handler.requestline = "PUT /api/fleet HTTP/1.1"
+        handler.client_address = ("127.0.0.1", 1)
+        handler._reject_write()
+        self.assertEqual(handler.rfile.tell(), 2)
+        self.assertIn(b"405 Method Not Allowed", handler.wfile.getvalue())
 
 
 @SKIP
@@ -200,6 +218,22 @@ class HistorianWriteTests(unittest.TestCase):
         self.assertIsNotNone(health["last_error"], "a database outage must be reported, not silent")
         self.assertEqual(guardian.robots["robot-01"].samples, 120)
 
+    def test_stale_rows_cannot_prove_current_run_persistence(self):
+        _truncate()
+        _seed()
+        expected = {"robot-alpha", "robot-bravo", "robot-charlie"}
+        with db.connect(_owner_settings()) as connection:
+            stale = _database_rows_for_missions(
+                connection, [f"m-{robot_id}" for robot_id in expected])
+            current = _database_rows_for_missions(
+                connection, [f"new-run-m1-{robot_id}" for robot_id in expected])
+        self.assertEqual(set(stale), expected)
+        self.assertEqual(current, {})
+        self.assertFalse(_current_run_history_complete(
+            current, expected, writer_written=sum(stale.values())))
+        self.assertTrue(_current_run_history_complete(
+            stale, expected, writer_written=sum(stale.values())))
+
 
 @SKIP
 class HistoryApiTests(unittest.TestCase):
@@ -214,6 +248,8 @@ class HistoryApiTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.server.shutdown()
+        cls.server.server_close()
+        cls.thread.join(5)
 
     def get(self, path):
         with urllib.request.urlopen(f"http://127.0.0.1:8098{path}", timeout=10) as response:

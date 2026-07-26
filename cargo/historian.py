@@ -101,13 +101,13 @@ class Historian:
         self._close()
 
     def flush(self, timeout: float = 5.0) -> bool:
-        """Wait until the queue drains. Test and shutdown helper only; never called by the core."""
+        """Wait until queued and in-flight records finish. Never called by the core."""
         deadline = monotonic() + timeout
         while monotonic() < deadline:
-            if self._queue.empty():
+            if self._queue.unfinished_tasks == 0:
                 return True
             self._stop.wait(0.02)
-        return self._queue.empty()
+        return self._queue.unfinished_tasks == 0
 
     # ---------- consumer side ----------
 
@@ -142,7 +142,10 @@ class Historian:
             batch = self._drain()
             if not batch:
                 continue
-            if not self._write(batch):
+            wrote = self._write(batch)
+            for _event in batch:
+                self._queue.task_done()
+            if not wrote:
                 self.retries += 1
                 self._close()
         # Best-effort final drain so a clean shutdown does not discard buffered history.
@@ -150,6 +153,8 @@ class Historian:
             remaining = self._drain(block=False)
             if remaining:
                 self._write(remaining)
+                for _event in remaining:
+                    self._queue.task_done()
         self._close()
 
     def _drain(self, *, block: bool = True) -> list[dict[str, Any]]:

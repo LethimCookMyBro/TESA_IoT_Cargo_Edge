@@ -29,7 +29,6 @@ def train() -> dict:
     config = {"model": "RandomForestClassifier", "input_shape": [128, 6], "channels": list(CHANNELS), "dataset_channel_indices": [4, 5, 6, 7, 8, 9], "feature_count": int(features.shape[1]), "risk_quantiles": {"low_to_medium": float(np.quantile(training_accel_std, .5)), "medium_to_high": float(np.quantile(training_accel_std, .8))}, "fit_seconds": fit_s}
     (models / "feature_config.json").write_text(json.dumps(config, indent=2), encoding="utf-8")
     (models / "label_mapping.json").write_text(json.dumps(LABELS, indent=2), encoding="utf-8")
-    (models / "preprocessing_config.json").write_text(json.dumps({"normalization": "none; tree baseline", "fit_on": "train split only"}, indent=2), encoding="utf-8")
     return config
 
 

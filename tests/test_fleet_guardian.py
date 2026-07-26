@@ -431,6 +431,14 @@ class FleetServiceTests(unittest.TestCase):
 
 
 class HistorianQueueTests(unittest.TestCase):
+    def test_flush_does_not_claim_success_while_a_record_is_in_flight(self):
+        historian = Historian(max_queue=1)
+        historian.submit({"kind": "health_event"})
+        historian._queue.get_nowait()  # the writer drained it but has not committed it yet
+        self.assertFalse(historian.flush(timeout=0.01))
+        historian._queue.task_done()
+        self.assertTrue(historian.flush(timeout=0.01))
+
     def test_queue_is_bounded_and_drops_are_counted_not_silent(self):
         historian = Historian(max_queue=10)  # never started, so nothing drains it
         accepted = sum(historian.submit({"kind": "health_event", "n": index}) for index in range(50))

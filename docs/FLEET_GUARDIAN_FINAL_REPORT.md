@@ -21,7 +21,7 @@ The single-robot CargoShield demo is now a multi-robot Fleet Guardian prototype:
 - the previously unused 1 824-window validation split now selects the confidence-rejection
   threshold, and that choice measurably improves held-out behaviour;
 - a read-only maintenance copilot boundary enforced by a SELECT-only PostgreSQL role;
-- **two pre-existing flaky verification harnesses fixed at the root cause**, and one incorrect
+- **three flaky verification paths fixed at the root cause**, and one incorrect
   Phase 0 finding retracted with evidence.
 
 Two things the goal asked for that are **not** delivered, and why:
@@ -110,7 +110,8 @@ The three rules this diagram exists to make checkable:
 ### Deleted (each proven unreachable first)
 
 `cargo/telemetry.py` (its only production caller was the dead BLE placeholder),
-`models/preprocessing_config.json` (written, never read).
+`models/preprocessing_config.json` (written, never read); its generator was removed too, and a
+regression test proves training cannot recreate it.
 
 ## 4. Keep / merge / wire / remove results
 
@@ -266,11 +267,11 @@ PostgreSQL 16 in Docker on `127.0.0.1:5433`, one `cargo.mqtt_service --device-id
 
 | # | Command | Result |
 | --- | --- | --- |
-| 1 | `python -m pytest -q` | **PASSED — 124 passed, 111 subtests, 3 consecutive runs** (27.7 s / 29.2 s / 27.3 s). Baseline was 58 passed |
-| 2 | `python -m compileall -q cargo training scripts tests` | **PASSED** — exit 0 |
+| 1 | `python -m pytest -q` | **PASSED — 128 passed, 111 subtests, 3 consecutive runs** (40.82 s / 38.19 s / 37.71 s). Baseline was 58 passed |
+| 2 | `python -m compileall -q cargo training scripts tests` | **PASSED** — exit 0, 3 consecutive runs |
 | 3 | `python scripts\smoke_mqtt_flow.py --dataset-demo` | **PASSED** — 3 consecutive runs |
 | 4 | `python scripts\demo_e2e_check.py` | **PASSED** — all 14 checks, 3 consecutive runs (was flaky at baseline) |
-| 5 | `python scripts\fleet_scenario.py` | **PASSED** — all 11 checks, 3 consecutive runs |
+| 5 | `python scripts\fleet_scenario.py` | **PASSED** — all 12 checks, 3 consecutive runs; every run used a unique `run_id` and current-run-only database query |
 | 6 | `python scripts\webapp_ui_check.py --url "http://127.0.0.1:8080/?device=ui-verify"` | **PASSED** — 3 consecutive runs, **0 console errors**, 12 screenshots, both surfaces |
 | 7 | `python -m cargo.db` | **PASSED** — migration applied once, second run a no-op |
 | 8 | `python -m training.select_confidence` | **PASSED** — threshold 0.55 written |
@@ -284,7 +285,7 @@ reason if the database is unreachable, but on this run the database was reachabl
 
 **Not run:** nothing that was claimed.
 
-### 9.1 Two pre-existing flaky harnesses, fixed at the root cause
+### 9.1 Three flaky verification paths, fixed at the root cause
 
 Both were failing intermittently at baseline and both are now deterministic across three runs.
 
@@ -309,6 +310,23 @@ silently swallow an operator command (now retried, bounded), and `NaN` from a fa
 not be stored in `jsonb`, failing whole batches (now stored as `null` plus a `_nonfinite` list, so
 the fact is kept).
 
+3. **`HistoryApiTests` intermittently aborted POST/PUT with Windows error 10053.**
+   The read-only handler returned 405 without consuming the two-byte request body. Windows can
+   reset a socket that closes with unread receive data, discarding the response before the client
+   sees it. The handler now drains bounded small bodies before replying, closes explicitly, and
+   the test server closes and joins cleanly. Repro before the fix failed at request 91/2 000;
+   the same 2 000-request probe had zero failures after the fix.
+
+### 9.2 Evidence-integrity closeout
+
+The old fleet persistence check queried all historical telemetry and only required three robot ids.
+It could therefore pass with stale rows while the current post-outage writer reported
+`written: 0`. The scenario now creates a unique `run_id`, embeds it in every mission id, queries
+only those mission ids, requires current-run rows for every expected robot, and separately requires
+the post-outage writer to write at least one record. Historian counters are preserved by phase and
+summed explicitly. `Historian.flush()` now waits for in-flight batches as well as queued batches;
+an empty queue alone is no longer reported as durable completion.
+
 ## 10. Measured performance, throughput, queue depth, and limits
 
 **These are local simulator measurements on this workstation. They are not board performance.**
@@ -319,20 +337,21 @@ Sensor-ingest-to-safety-decision, 68 samples across 3 robots, from `reports/flee
 
 | p50 | p95 | max | mean |
 | --- | --- | --- | --- |
-| **0.245 ms** | **0.375 ms** | 1.87 ms | 0.266 ms |
+| **0.1586 ms** | **0.4404 ms** | 1.6753 ms | 0.2225 ms |
 
 Persistence does not materially change it: `test_a_slow_sink_does_not_slow_the_decision_materially`
 runs 200 samples through a guardian whose sink is a real historian queue and asserts p95 < 5 ms;
-observed p95 stays sub-millisecond. During the deliberate database outage the guardian decided **24
+observed p95 stays sub-millisecond. During the deliberate database outage the guardian decided **27
 further samples** with no change in behaviour.
 
 Historian under outage (`max_queue=50`, database pointed at a closed port): queue filled to 50,
-**144 records dropped and counted**, 0 written, `connected: false`. Nothing blocked, nothing grew
+**61 records dropped and counted**, 0 written, `connected: false`. Nothing blocked, nothing grew
 without limit, and the drop count is exposed on `cargoshield/fleet/status` and in the dashboard.
 
-Persistence in the healthy case: 309 telemetry samples, 313 predictions, 313 derived features, 424
-fleet events, 6 missions, 5 robots — with per-robot row counts confirming all three scenario robots
-were ingested concurrently.
+Persistence evidence is scoped to the final invocation, not the accumulated database: **41 current-run
+telemetry rows** (`robot-alpha: 14`, `robot-bravo: 14`, `robot-charlie: 13`). The final post-outage
+writer committed 93 records; all healthy writer phases committed 174 records total. Accumulated
+table totals remain visible for operations but are explicitly excluded from acceptance.
 
 **Limitations of these numbers.** Single workstation, one broker, three robots, ~50 ms nominal
 sample interval, ~70 decisions per measured run. The `max` of 1.87 ms is a scheduling outlier, not a
@@ -394,7 +413,7 @@ a static server for `webapp/`, then open `index.html` and `fleet.html`.
 1. Three simulated robots ingest concurrently through versioned, robot-scoped MQTT contracts, with
    per-robot isolation proven by test and by scenario evidence.
 2. A deterministic Python Safety Core makes every Stop/Slow/Hold/Move decision, measured at
-   p50 0.245 ms / p95 0.375 ms ingest-to-decision **in the local simulator**.
+   p50 0.1586 ms / p95 0.4404 ms ingest-to-decision **in the local simulator**.
 3. Robot safety survives a PostgreSQL outage; 24 decisions were made with the database gone, and
    144 dropped history records were counted rather than lost silently.
 4. Surface classification is a real scikit-learn model over real stored CareerCon windows:
@@ -404,7 +423,7 @@ a static server for `webapp/`, then open `index.html` and `fleet.html`.
    acted-upon windows from 0.574 to 0.721 at 52.8 % coverage on the untouched test split.
 6. The maintenance copilot boundary cannot write: PostgreSQL refuses INSERT, UPDATE, DELETE,
    TRUNCATE and DROP from its role, and the module contains no transport and only literal SELECTs.
-7. Two flaky verification harnesses were diagnosed to root cause and fixed; the full suite passes
+7. Three flaky verification paths were diagnosed to root cause and fixed; the full suite passes
    three consecutive times with zero browser console errors.
 8. Exact sensor channels, units, ranges and default publish rates are taken from the installed
    Bitstream Studio 0.1.9 catalog, and the health rules enforce those catalog values.
