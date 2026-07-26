@@ -1,8 +1,8 @@
 /* CargoShield AI — Premium Industrial Edge-AI Cargo Protection Center.
  *
  * One product, two surfaces: the Mission Protection console (index.html) and the Fleet Guardian
- * module (fleet.html). The console is a single non-scrolling operator screen built around a 3D
- * hero; Fleet Guardian is a document that scrolls.
+ * module (fleet.html). The console is built around a 3D hero; Fleet Guardian is a document that
+ * scrolls. Both use the page scrollbar so keyboard and zoom users never face nested vertical panes.
  *
  * Colour never carries a state on its own. Every tone below is paired with a word (and on the
  * headline, a shape) in the markup, so the page still reads correctly in greyscale.
@@ -34,6 +34,12 @@
 
   --radius: 12px;
   --radius-lg: 16px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --control-size: 44px;
   --shadow: 0 1px 0 rgba(255, 255, 255, .04) inset, 0 10px 30px rgba(0, 0, 0, .5);
   font-synthesis-weight: none;
 }
@@ -45,16 +51,16 @@
 
 body {
   margin: 0;
-  /* One control-room screen: the page itself never scrolls, the telemetry column does. */
-  height: 100dvh;
-  overflow: hidden;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   background:
     radial-gradient(1100px 520px at 72% -12%, #14243a 0%, transparent 62%),
     var(--bg);
   color: var(--text);
-  font: 14px/1.55 ui-sans-serif, system-ui, "Segoe UI", "Noto Sans Thai", sans-serif;
+  font: 16px/1.6 ui-sans-serif, system-ui, "Segoe UI", "Noto Sans Thai", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -71,7 +77,7 @@ h1, h2, h3 { margin: 0; }
 
 .eyebrow {
   display: block;
-  font-size: 10.5px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: .14em;
   text-transform: uppercase;
@@ -145,7 +151,8 @@ h1, h2, h3 { margin: 0; }
 
 .nav { display: flex; gap: 8px; flex-wrap: wrap; }
 .nav a {
-  padding: 7px 16px; border-radius: 999px; text-decoration: none; font-size: 13px;
+  display: inline-flex; align-items: center; min-height: var(--control-size);
+  padding: 7px 16px; border-radius: 999px; text-decoration: none; font-size: 14px;
   border: 1px solid var(--line); color: var(--text-dim); background: var(--bg-panel);
   transition: color .16s ease, border-color .16s ease;
 }
@@ -197,7 +204,7 @@ h1, h2, h3 { margin: 0; }
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow-y: auto;
+  overflow: visible;
   padding-right: 4px;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
@@ -218,8 +225,17 @@ h1, h2, h3 { margin: 0; }
   position: absolute;
   inset: 12px 12px auto auto;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
   align-items: center;
+  max-width: calc(100% - 24px);
+}
+.camera-modes { display: flex; flex-wrap: wrap; gap: 6px; }
+.camera-modes button[aria-pressed="true"] {
+  color: var(--text);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, rgba(11, 17, 25, .82));
 }
 
 .chip {
@@ -286,11 +302,6 @@ h1, h2, h3 { margin: 0; }
 /* ---------------- protection summary (the five-second answer) ---------------- */
 
 .protection {
-  /* Pinned to the top of the scrolling column: focusing a control further down scrolls this column,
-     and the headline answer must never be the thing that scrolls away. */
-  position: sticky;
-  top: 0;
-  z-index: 2;
   padding: 16px 16px 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -386,7 +397,7 @@ h1, h2, h3 { margin: 0; }
 
 .panel h2, .deck-card h2 {
   margin-bottom: 10px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: .15em;
   text-transform: uppercase;
@@ -395,6 +406,9 @@ h1, h2, h3 { margin: 0; }
 
 details.tech { padding: 0; }
 details.tech > summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-size);
   padding: 12px 14px;
   cursor: pointer;
   font-size: 11px;
@@ -411,7 +425,7 @@ details.tech .readout { padding: 12px 14px; }
 .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
 
 button {
-  min-height: 38px;
+  min-height: var(--control-size);
   padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -445,7 +459,7 @@ button[data-busy="true"]::after {
 
 .field-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-top: 12px; }
 .field { display: grid; gap: 5px; margin: 0; }
-label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); }
+label { font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
 
 select, input[type="range"], input[type="number"], input[type="text"] {
   width: 100%;
@@ -454,7 +468,7 @@ select, input[type="range"], input[type="number"], input[type="text"] {
   accent-color: var(--accent);
 }
 select, input[type="number"], input[type="text"] {
-  min-height: 36px;
+  min-height: var(--control-size);
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -465,7 +479,7 @@ select, input[type="number"], input[type="text"] {
 .obstacle-inputs { display: grid; grid-template-columns: minmax(0, 1fr) 112px; align-items: center; gap: 12px; }
 .obstacle-number { display: flex; align-items: center; gap: 7px; color: var(--text-dim); }
 .obstacle-number input { min-width: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
-.hint { margin: 0; font-size: 12px; color: var(--text-dim); }
+.hint { margin: 0; font-size: 14px; color: var(--text-dim); }
 
 @media (max-width: 520px) {
   .obstacle-inputs { grid-template-columns: 1fr; }
@@ -501,7 +515,7 @@ progress::-webkit-progress-value { background: var(--accent); border-radius: 999
   background: var(--bg-panel);
   box-shadow: var(--shadow);
 }
-.deck-card > :last-child { min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.deck-card > :last-child { min-height: 0; overflow-x: hidden; overflow-y: auto; }
 
 /* The decision, in sentences. Left rule ties each line back to the engine that produced it. */
 .explain { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; align-content: start; }
@@ -519,7 +533,15 @@ progress::-webkit-progress-value { background: var(--accent); border-radius: 999
 .risk-list .bar i { display: block; height: 100%; background: var(--fill, var(--accent)); }
 .risk-list b { color: var(--text); font-weight: 600; min-width: 24px; }
 
-.timeline { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; align-content: start; }
+.timeline {
+  max-height: clamp(120px, 24vh, 220px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 5px;
+  align-content: start;
+}
 .timeline li { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px; font-size: 12px; color: var(--text-dim); }
 .timeline time { color: #64798f; font-variant-numeric: tabular-nums; }
 
@@ -560,9 +582,6 @@ progress::-webkit-progress-value { background: var(--accent); border-radius: 999
 @media (max-width: 1320px) {
   .stat { min-width: 126px; }
   .brand h1 { font-size: 17px; }
-  .deck { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
-  /* The timeline is the least urgent of the three; it drops below rather than squeezing the others. */
-  .deck > :last-child { grid-column: 1 / -1; }
 }
 
 /* Short viewports (1280x720 and laptops with browser chrome): cap the deck so the stage keeps
@@ -575,13 +594,11 @@ progress::-webkit-progress-value { background: var(--accent); border-radius: 999
 
 /* Tablet and narrow: one column, in reading order — stage, protection, controls, technical. */
 @media (max-width: 1080px) {
-  body { height: auto; min-height: 100dvh; overflow: visible; }
+  body { height: auto; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; }
   .layout { grid-template-columns: 1fr; grid-template-rows: none; }
   .stage { grid-column: 1; grid-row: auto; min-height: 56vh; }
   .side { grid-column: 1; grid-row: auto; overflow: visible; }
   .deck { grid-column: 1; grid-row: auto; grid-template-columns: 1fr; }
-  .deck-card { overflow: visible; }
-  .deck-card > :last-child { max-height: 240px; }
 }
 
 @media (max-width: 620px) {
@@ -602,7 +619,7 @@ progress::-webkit-progress-value { background: var(--accent); border-radius: 999
    The console above is one non-scrolling control-room screen. The fleet module is a document: it
    scrolls, so `body.fleet` opts out of that rule rather than conditionalising it. */
 
-body.fleet { height: auto; min-height: 100dvh; overflow: auto; display: block; }
+body.fleet { height: auto; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; display: block; }
 
 .fleet-main { display: grid; gap: 16px; padding: 16px 22px 40px; max-width: 1640px; margin: 0 auto; }
 
@@ -631,11 +648,11 @@ body.fleet { height: auto; min-height: 100dvh; overflow: auto; display: block; }
 .summary b { font-size: 30px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .summary-key { font-size: 11px; color: var(--text-dim); }
 
-/* Wide tables scroll inside their own box, and the box is focusable so a keyboard can reach it. */
-.table-scroll { overflow-x: auto; max-height: 420px; overflow-y: auto; border: 1px solid var(--line-soft); border-radius: 8px; }
-.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
-.grid th, .grid td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
-.grid thead th { position: sticky; top: 0; z-index: 1; background: var(--bg-raised); color: var(--text-dim); font-size: 11px; letter-spacing: .04em; }
+/* Wide tables may scroll sideways, but pagination keeps them from creating a nested vertical page. */
+.table-scroll { overflow-x: auto; overflow-y: visible; border: 1px solid var(--line-soft); border-radius: 8px; }
+.grid { width: 100%; border-collapse: collapse; font-size: 14px; }
+.grid th, .grid td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+.grid thead th { background: var(--bg-raised); color: var(--text-dim); font-size: 14px; letter-spacing: .02em; }
 .grid td.wrap { white-space: normal; max-width: 380px; }
 .grid tbody tr:hover { background: rgba(34, 211, 238, .05); }
 
@@ -667,6 +684,42 @@ body.fleet { height: auto; min-height: 100dvh; overflow: auto; display: block; }
   white-space: pre-wrap; word-break: break-word;
 }
 
+.table-actions {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+.table-actions h2, .table-actions .field { margin-bottom: 0; }
+.download-button { display: inline-flex; align-items: center; gap: var(--space-2); }
+.download-glyph { font-size: 1.2em; line-height: 1; }
+.download-status { min-height: 1.6em; margin: 0 0 var(--space-2); color: var(--text-dim); }
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.pager output { min-width: 58px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pager span { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+.data-tools { padding: 0; }
+.data-tools > summary {
+  min-height: var(--control-size);
+  padding: 12px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--text);
+}
+.data-tools[open] > summary { border-bottom: 1px solid var(--line-soft); }
+.data-tool-grid { display: grid; gap: var(--space-6); padding: var(--space-4); }
+.data-tool + .data-tool { padding-top: var(--space-6); border-top: 1px solid var(--line-soft); }
+.data-tool h2 { margin-bottom: var(--space-2); }
+
 /* History being unavailable is a degraded surface, never a robot fault — amber, not red. */
 .api-error {
   margin: 0; padding: 11px 15px; border-radius: var(--radius);
@@ -694,7 +747,7 @@ code {
 .boundary-badges li.off { border-color: color-mix(in srgb, var(--hold) 55%, var(--line)); color: var(--hold); }
 
 .question-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; margin: 10px 0 14px; }
-.question-grid button { text-align: left; padding: 10px 12px; min-height: 0; font-weight: 600; line-height: 1.45; }
+.question-grid button { text-align: left; padding: 10px 12px; min-height: var(--control-size); font-weight: 600; line-height: 1.45; }
 .question-grid button[aria-pressed="true"] { border-color: var(--accent); color: var(--text); background: color-mix(in srgb, var(--accent) 14%, var(--bg-raised)); }
 
 .answer { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-raised); padding: 14px; }
@@ -706,4 +759,7 @@ code {
   .fleet-main { padding: 12px 12px 32px; }
   .summary { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .summary b { font-size: 24px; }
+  .table-actions { align-items: stretch; }
+  .table-actions > * { width: 100%; }
+  .pager { justify-content: space-between; }
 }

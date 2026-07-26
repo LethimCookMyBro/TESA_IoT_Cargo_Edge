@@ -66,6 +66,13 @@ CargoShield services
 - `cargo.history_api` serves the copilot's curated questions over GET at `/api/copilot/{question}`,
   reading through the SELECT-only role. The question set is an allowlist
   (`history_api.COPILOT_QUESTIONS`); a question outside it has no endpoint at all.
+- `/api/events` and `/api/missions` are stable, read-only, independently paginated views with a
+  hard maximum of 20 rows per page. Their CSV siblings (`/api/events.csv`,
+  `/api/missions.csv`) reuse the same filters, cap exports at 5,000 rows, and never enter the
+  synchronous safety path.
+- Fleet Intelligence presents operational history in this order: Safety Events, Mission History,
+  Maintenance Assistant, then collapsed advanced data tools. Event and mission page state are
+  independent; changing the event severity resets only the event page.
 
 ## Presentation boundary
 
@@ -78,6 +85,10 @@ The browser renames what Python decided and never decides anything itself:
   published produces no sentence rather than an invented one.
 - `webapp/controls.js::actionTone` gives `HOLD_UNCERTAIN` its own colour in the 3D stage so an
   uncertain model is visually distinct from a deliberate slow-down.
+- `webapp/scene.js` owns three presentation-only cameras (Overview, Follow, Robot POV). Camera
+  selection publishes no MQTT command and cannot change engine state. Route phases are native
+  Three.js plane geometry with distinct widths, so the active route does not depend on unsupported
+  WebGL line-width behaviour.
 - `tests/test_webapp_visual.py` pins all three against the engine's own status and action sets, so
   a new engine status cannot silently render blank.
 

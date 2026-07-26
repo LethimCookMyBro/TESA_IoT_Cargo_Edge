@@ -8,6 +8,7 @@ reported as passed. Start it with `docker compose up -d` then `python -m cargo.d
 from __future__ import annotations
 
 import io
+import csv
 import json
 import tempfile
 import threading
@@ -283,13 +284,40 @@ class HistoryApiTests(unittest.TestCase):
 
     def test_bad_input_is_rejected_not_executed(self):
         for path in ("/api/telemetry?robot_id=BAD%20ID", "/api/events?robot_id=%27%3B%20DROP--",
-                     "/api/events?severity=apocalyptic", "/api/telemetry"):
+                     "/api/events?severity=apocalyptic", "/api/telemetry",
+                     "/api/events?page=", "/api/events?page=0", "/api/events?page=one",
+                     "/api/events?limit=21", "/api/missions?page=1&page=2"):
             with self.subTest(path=path):
                 with self.assertRaises(urllib.error.HTTPError) as caught:
                     urllib.request.urlopen(f"http://127.0.0.1:8098{path}", timeout=10)
                 self.assertEqual(caught.exception.code, 400)
         with db.connect(_owner_settings()) as connection:
             self.assertGreater(connection.execute("SELECT count(*) FROM robots").fetchone()[0], 0)
+
+    def test_operator_tables_return_at_most_twenty_rows_and_page_metadata(self):
+        for endpoint, key in (("/api/events", "events"), ("/api/missions", "missions")):
+            with self.subTest(endpoint=endpoint):
+                _status, body = self.get(endpoint)
+                self.assertLessEqual(len(body[key]), 20)
+                self.assertEqual(body["page"], 1)
+                self.assertEqual(body["page_size"], 20)
+                self.assertFalse(body["has_previous"])
+                self.assertEqual(body["range_end"], len(body[key]))
+
+    def test_csv_response_uses_active_filter_bom_and_download_headers(self):
+        with urllib.request.urlopen(
+                "http://127.0.0.1:8098/api/events.csv?severity=info", timeout=10) as response:
+            raw = response.read()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.headers["Content-Type"], "text/csv; charset=utf-8")
+            self.assertRegex(response.headers["Content-Disposition"],
+                             r'attachment; filename="cargoshield_safety_events_\d{8}T\d{6}Z.csv"')
+            self.assertEqual(int(response.headers["X-Row-Count"]),
+                             len(list(csv.DictReader(io.StringIO(
+                                 raw.decode("utf-8-sig"), newline="")))))
+        self.assertTrue(raw.startswith(b"\xef\xbb\xbf"))
+        for row in csv.DictReader(io.StringIO(raw.decode("utf-8-sig"), newline="")):
+            self.assertEqual(row["severity"], "info")
 
     def test_unknown_endpoint_is_404(self):
         with self.assertRaises(urllib.error.HTTPError) as caught:

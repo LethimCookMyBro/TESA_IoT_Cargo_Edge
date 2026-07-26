@@ -11,10 +11,16 @@ import { LiveDataClient, DEFAULT_MQTT_WS_URL } from './live-data.browser.js';
 const params = new URLSearchParams(location.search);
 const url = params.get('url') ?? DEFAULT_MQTT_WS_URL;
 const apiBase = (params.get('api') ?? 'http://127.0.0.1:8099').replace(/\/$/, '');
+const mqttDisabled = params.get('mqtt') === 'off';
 
 const FLEET_STATUS_TOPIC = 'cargoshield/fleet/status';
 const HISTORY_REFRESH_MS = 5000;
-const MAX_ROWS = 50;
+const PAGE_SIZE = 20;
+const DETAIL_ROWS = 200;
+const state = {
+  events: { page: 1, loading: false },
+  missions: { page: 1, loading: false },
+};
 
 const $ = (id) => document.getElementById(id);
 const NA = 'N/A';
@@ -337,23 +343,161 @@ async function refreshSeries() {
 
 const RISK_WORD = (score) => (score >= 0.8 ? 'สูง (high)' : score >= 0.5 ? 'ปานกลาง (medium)' : 'ต่ำ (low)');
 
+function loadingRow(tbody, columns, message = 'กำลังโหลดข้อมูล…') {
+  replaceRows(tbody, [], message, columns);
+}
+
+function showHistoryUnavailable(message) {
+  replaceRows($('event-rows'), [], `History API unavailable: ${message}`, 7);
+  replaceRows($('mission-rows'), [], `History API unavailable: ${message}`, 6);
+  state.events.metadata = null;
+  state.missions.metadata = null;
+  renderPager('event', null, 0);
+  renderPager('mission', null, 0);
+}
+
+function renderPager(prefix, metadata, count) {
+  const current = state[prefix === 'event' ? 'events' : 'missions'];
+  $(`${prefix}-page`).textContent = `หน้า ${metadata?.page ?? current.page}`;
+  $(`${prefix}-range`).textContent = count
+    ? `รายการ ${metadata.range_start}–${metadata.range_end}`
+    : '0 รายการ';
+  $(`${prefix}-prev`).disabled = current.loading || !metadata?.has_previous;
+  $(`${prefix}-next`).disabled = current.loading || !metadata?.has_more;
+}
+
+async function loadEvents() {
+  const current = state.events;
+  if (current.loading) return;
+  current.loading = true;
+  loadingRow($('event-rows'), 7);
+  renderPager('event', null, 0);
+  const severity = $('event-severity').value;
+  const query = new URLSearchParams({ page: String(current.page), limit: String(PAGE_SIZE) });
+  if (severity) query.set('severity', severity);
+  try {
+    const result = await api(`/api/events?${query}`);
+    const rows = result.events ?? [];
+    replaceRows($('event-rows'), rows.map((event) => {
+      const row = document.createElement('tr');
+      cell(row, clock(event.observed_ms));
+      cell(row, event.robot_id);
+      cell(row, event.severity, { tone: SEVERITY_TONE[event.severity] ?? 'idle' });
+      cell(row, event.kind);
+      cell(row, event.action ?? event.code);
+      cell(row, event.health_state, { tone: HEALTH_TONE[event.health_state] ?? 'idle' });
+      cell(row, event.reason, { wrap: true });
+      return row;
+    }), 'ไม่พบเหตุการณ์ตามตัวกรองนี้', 7);
+    current.metadata = result;
+    renderPager('event', result, rows.length);
+  } catch (error) {
+    current.metadata = null;
+    replaceRows($('event-rows'), [], `History API unavailable: ${error?.message ?? error}`, 7);
+    renderPager('event', null, 0);
+    throw error;
+  } finally {
+    current.loading = false;
+    renderPager('event', current.metadata, current.metadata?.events?.length ?? 0);
+  }
+}
+
+async function loadMissions() {
+  const current = state.missions;
+  if (current.loading) return;
+  current.loading = true;
+  loadingRow($('mission-rows'), 6);
+  renderPager('mission', null, 0);
+  try {
+    const result = await api(`/api/missions?page=${state.missions.page}&limit=${PAGE_SIZE}`);
+    const rows = result.missions ?? [];
+    replaceRows($('mission-rows'), rows.map((mission) => {
+      const row = document.createElement('tr');
+      cell(row, mission.mission_id);
+      cell(row, mission.robot_id);
+      cell(row, mission.cargo_type);
+      cell(row, Array.isArray(mission.route) ? mission.route.join(' → ') : NA, { wrap: true });
+      cell(row, num(Number(mission.route_cost), 3));
+      cell(row, clock(mission.started_ms));
+      return row;
+    }), 'ยังไม่มีภารกิจที่บันทึกไว้', 6);
+    current.metadata = result;
+    renderPager('mission', result, rows.length);
+  } catch (error) {
+    current.metadata = null;
+    replaceRows($('mission-rows'), [], `History API unavailable: ${error?.message ?? error}`, 6);
+    renderPager('mission', null, 0);
+    throw error;
+  } finally {
+    current.loading = false;
+    renderPager('mission', current.metadata, current.metadata?.missions?.length ?? 0);
+  }
+}
+
+function csvFilename(response, fallback) {
+  const match = response.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/);
+  return match?.[1] ?? fallback;
+}
+
+async function downloadCsv(kind) {
+  const eventExport = kind === 'event';
+  const button = $(`${kind}-download`);
+  const status = $(`${kind}-download-status`);
+  const query = new URLSearchParams();
+  if (eventExport && $('event-severity').value) query.set('severity', $('event-severity').value);
+  const suffix = query.size ? `?${query}` : '';
+  const path = eventExport ? `/api/events.csv${suffix}` : '/api/missions.csv';
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  status.textContent = 'กำลังเตรียม CSV…';
+  try {
+    const response = await fetch(`${apiBase}${path}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
+    const rowCount = Number(response.headers.get('X-Row-Count') ?? 0);
+    if (!rowCount) {
+      status.textContent = 'ไม่มีข้อมูลตามตัวกรอง จึงไม่มีไฟล์ให้ดาวน์โหลด';
+      return;
+    }
+    const objectUrl = URL.createObjectURL(await response.blob());
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = csvFilename(
+      response,
+      `cargoshield_${eventExport ? 'safety_events' : 'mission_history'}.csv`,
+    );
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+    status.textContent = `ดาวน์โหลด CSV สำเร็จ ${rowCount} รายการ`;
+  } catch (error) {
+    status.textContent = `ดาวน์โหลดไม่สำเร็จ: ${error?.message ?? error}`;
+  } finally {
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+  }
+}
+
 async function refreshHistory() {
   try {
     const health = await api('/api/health');
     setApiStatus(Boolean(health.reachable), health.reachable ? text(health.database) : text(health.reason));
-    if (!health.reachable) return;
+    if (!health.reachable) {
+      showHistoryUnavailable(text(health.reason));
+      return;
+    }
   } catch (error) {
     setApiStatus(false, String(error.message ?? error));
+    showHistoryUnavailable(String(error.message ?? error));
     return;
   }
 
   try {
-    const severity = $('event-severity').value;
-    const [zones, missions, events, findings, quality, exports] = await Promise.all([
-      api('/api/zones'), api(`/api/missions?limit=${MAX_ROWS}`),
-      api(`/api/events?limit=${MAX_ROWS}${severity ? `&severity=${severity}` : ''}`),
-      api('/api/maintenance?unresolved=0&limit=' + MAX_ROWS),
+    const [zones, findings, quality, exports] = await Promise.all([
+      api('/api/zones'),
+      api('/api/maintenance?unresolved=0&limit=' + DETAIL_ROWS),
       api('/api/data-quality'), api('/api/exports?limit=1'),
+      loadEvents(), loadMissions(),
     ]);
 
     replaceRows($('zone-rows'), (zones.zones ?? []).map((zone) => {
@@ -367,29 +511,6 @@ async function refreshHistory() {
       cell(row, RISK_WORD(mean), { tone: mean >= 0.8 ? 'stop' : mean >= 0.5 ? 'hold' : 'go' });
       return row;
     }), 'ยังไม่มีข้อมูลโซน', 6);
-
-    replaceRows($('mission-rows'), (missions.missions ?? []).map((mission) => {
-      const row = document.createElement('tr');
-      cell(row, mission.mission_id);
-      cell(row, mission.robot_id);
-      cell(row, mission.cargo_type);
-      cell(row, Array.isArray(mission.route) ? mission.route.join(' → ') : NA, { wrap: true });
-      cell(row, num(Number(mission.route_cost), 3));
-      cell(row, clock(mission.started_ms));
-      return row;
-    }), 'ยังไม่มีภารกิจที่บันทึกไว้', 6);
-
-    replaceRows($('event-rows'), (events.events ?? []).map((event) => {
-      const row = document.createElement('tr');
-      cell(row, clock(event.observed_ms));
-      cell(row, event.robot_id);
-      cell(row, event.severity, { tone: SEVERITY_TONE[event.severity] ?? 'idle' });
-      cell(row, event.kind);
-      cell(row, event.action ?? event.code);
-      cell(row, event.health_state, { tone: HEALTH_TONE[event.health_state] ?? 'idle' });
-      cell(row, event.reason, { wrap: true });
-      return row;
-    }), 'ยังไม่มีเหตุการณ์', 7);
 
     replaceRows($('maintenance-rows'), (findings.findings ?? []).map((finding) => {
       const row = document.createElement('tr');
@@ -488,7 +609,30 @@ for (const id of ['export-robots', 'export-provenance', 'export-format']) {
 renderExportCommand();
 
 $('series-robot').addEventListener('change', refreshSeries);
-$('event-severity').addEventListener('change', refreshHistory);
+$('event-severity').addEventListener('change', async () => {
+  state.events.page = 1;
+  try {
+    await loadEvents();
+  } catch (error) {
+    setApiStatus(false, String(error?.message ?? error));
+  }
+});
+for (const [id, collection, delta] of [
+  ['event-prev', 'events', -1], ['event-next', 'events', 1],
+  ['mission-prev', 'missions', -1], ['mission-next', 'missions', 1],
+]) {
+  $(id).addEventListener('click', async () => {
+    const current = state[collection];
+    current.page = Math.max(1, current.page + delta);
+    try {
+      await (collection === 'events' ? loadEvents() : loadMissions());
+    } catch (error) {
+      setApiStatus(false, String(error?.message ?? error));
+    }
+  });
+}
+$('event-download').addEventListener('click', () => downloadCsv('event'));
+$('mission-download').addEventListener('click', () => downloadCsv('mission'));
 // Re-asking on a robot change keeps the answer and the selector from disagreeing on screen.
 $('copilot-robot').addEventListener('change', () => {
   const question = copilotQuestions.find((entry) => entry.id === activeQuestion);
@@ -500,27 +644,35 @@ function setLink(message, tone) {
   $('link-dot').className = `dot dot-${tone}`;
 }
 
-client = new LiveDataClient({
-  transport: 'mqtt',
-  url,
-  clientId: `cargoshield-fleet-${Math.random().toString(36).slice(2, 8)}`,
-});
-client.on('error', () => setLink('ผิดพลาด', 'stop'));
-client.on('disconnect', () => setLink('ตัดการเชื่อมต่อ', 'stop'));
-client.on('reconnect', () => setLink('กำลังเชื่อมต่อใหม่…', 'idle'));
-client.on('connect', () => setLink('เชื่อมต่อแล้ว', 'go'));
-
-try {
-  await client.connect();
-  setLink('เชื่อมต่อแล้ว', 'go');
-  // Retained, so the summary renders the moment the page opens.
-  await client.subscribe(FLEET_STATUS_TOPIC, (message) => renderFleetStatus(message.payload));
-} catch (error) {
-  setLink('ออฟไลน์', 'stop');
-  toast(`เชื่อมต่อ ${url} ไม่สำเร็จ`, true);
+if (!mqttDisabled) {
+  client = new LiveDataClient({
+    transport: 'mqtt',
+    url,
+    clientId: `cargoshield-fleet-${Math.random().toString(36).slice(2, 8)}`,
+  });
+  client.on('error', () => setLink('ผิดพลาด', 'stop'));
+  client.on('disconnect', () => setLink('ตัดการเชื่อมต่อ', 'stop'));
+  client.on('reconnect', () => setLink('กำลังเชื่อมต่อใหม่…', 'idle'));
+  client.on('connect', () => setLink('เชื่อมต่อแล้ว', 'go'));
+} else {
+  setLink('ออฟไลน์ · MQTT ปิดอยู่', 'idle');
 }
 
-await refreshHistory();
-// The curated question list is fetched once: it is a static allowlist, not live data.
-await loadCopilot();
+async function connectMqtt() {
+  if (!client) return;
+  try {
+    await client.connect();
+    setLink('เชื่อมต่อแล้ว', 'go');
+    // Retained, so the summary renders the moment the page opens.
+    await client.subscribe(FLEET_STATUS_TOPIC, (message) => renderFleetStatus(message.payload));
+  } catch (error) {
+    setLink('ออฟไลน์', 'stop');
+    toast(`เชื่อมต่อ ${url} ไม่สำเร็จ`, true);
+  }
+}
+
+// MQTT and history are independent surfaces: an offline robot channel must not leave read-only
+// history spinning, and a database outage must not block the live fleet channel.
+void connectMqtt();
+await Promise.all([refreshHistory(), loadCopilot()]);
 setInterval(refreshHistory, HISTORY_REFRESH_MS);

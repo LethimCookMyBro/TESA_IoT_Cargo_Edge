@@ -8,7 +8,7 @@ import { LiveDataClient, DEFAULT_MQTT_WS_URL } from './live-data.browser.js';
 import { createScene } from './scene.js';
 import {
   COMMANDS, CARGO_TYPES, ZONES, DISPLAY_PATHS, read, topics, statusTone, obstacleTone,
-  protectionState, explain,
+  protectionState, explain, CAMERA_MODES,
 } from './controls.js';
 
 const params = new URLSearchParams(location.search);
@@ -22,13 +22,27 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matc
 /* ---------------- 3D stage (optional) ---------------- */
 
 const stage = createScene($('stage'), { reducedMotion });
+const cameraButtons = [...document.querySelectorAll('button[data-camera-mode]')];
+function selectCamera(mode) {
+  if (!stage || !CAMERA_MODES.includes(mode) || !stage.setCameraMode(mode)) return;
+  for (const button of cameraButtons) {
+    button.setAttribute('aria-pressed', String(button.dataset.cameraMode === mode));
+  }
+}
 if (stage) {
-  $('reset-camera').addEventListener('click', () => stage.resetCamera());
+  for (const button of cameraButtons) {
+    button.addEventListener('click', () => selectCamera(button.dataset.cameraMode));
+  }
+  $('reset-camera').addEventListener('click', () => {
+    stage.resetCamera();
+    selectCamera('overview');
+  });
   stage.onFps((value) => { $('fps').textContent = `${value} fps`; });
 } else {
   $('stage').hidden = true;
   $('stage-fallback').hidden = false;
   $('reset-camera').disabled = true;
+  for (const button of cameraButtons) button.disabled = true;
   $('fps').hidden = true;
 }
 
@@ -90,9 +104,9 @@ const sentAt = new Map();
 // A demo is a live system: one accidental double-click must not queue two missions. Keyed on the
 // payload, so changing pickup and destination in quick succession still sends both commands.
 const MIN_REPEAT_MS = 400;
-// Bounded retry across a transport reconnect. Three attempts 400 ms apart covers the observed
-// WebSocket drop without ever queueing a command indefinitely.
-const COMMAND_ATTEMPTS = 3;
+// Bounded retry across a transport reconnect. Five attempts 400 ms apart cover one full reconnect
+// without ever queueing a command indefinitely.
+const COMMAND_ATTEMPTS = 5;
 const COMMAND_RETRY_MS = 400;
 
 async function send(name, payload, button) {
@@ -114,6 +128,7 @@ async function send(name, payload, button) {
     try {
       // Commands are sparse and must reach the broker; QoS 1 gives publish() a PUBACK to await.
       // State telemetry stays QoS 0 in the Python service.
+      if (!client.connected) throw new Error('MQTT is reconnecting');
       await client.publish(topic.command, payload, { qos: 1 });
       return;
     } catch (error) {

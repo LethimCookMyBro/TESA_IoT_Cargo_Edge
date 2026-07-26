@@ -62,6 +62,11 @@
     <p class="stage-note">ภาพสาธิตจากสถานะที่ Python Engine เผยแพร่ — ไม่ใช่ตำแหน่งจริง ไม่มี SLAM และไม่ใช่การวัดจากหุ่นยนต์จริง</p>
 
     <div class="stage-toolbar">
+      <div class="camera-modes" role="group" aria-label="มุมกล้องสามมิติ">
+        <button type="button" class="ghost" data-camera-mode="overview" aria-pressed="true">Overview</button>
+        <button type="button" class="ghost" data-camera-mode="follow" aria-pressed="false">Follow</button>
+        <button type="button" class="ghost" data-camera-mode="robot-pov" aria-pressed="false">Robot POV</button>
+      </div>
       <button type="button" id="reset-camera" class="ghost">รีเซ็ตมุมกล้อง</button>
       <span class="chip" id="fps" title="อัตราเฟรมของภาพสามมิติ">— fps</span>
     </div>
@@ -199,7 +204,8 @@
 
     <article class="deck-card" aria-labelledby="timeline-heading">
       <h2 id="timeline-heading">ลำดับเหตุการณ์</h2>
-      <ol id="timeline" class="timeline" aria-live="polite" aria-relevant="additions"></ol>
+      <ol id="timeline" class="timeline" tabindex="0" aria-label="ลำดับเหตุการณ์ล่าสุด"
+          aria-live="polite" aria-relevant="additions"></ol>
     </article>
   </section>
 </main>

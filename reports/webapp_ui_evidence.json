@@ -1,25 +1,25 @@
 {
-  "url": "http://127.0.0.1:8080/?device=ui-verify",
+  "url": "http://127.0.0.1:8080/?device=ui-final-20260726",
   "steps": [
     {
       "step": "reset",
       "status": "IDLE",
-      "screenshot": "reports/screenshots/IDLE.png"
+      "screenshot": "reports/screenshots/after/IDLE.png"
     },
     {
       "step": "start",
       "status": "MOVING",
-      "screenshot": "reports/screenshots/MOVING.png"
+      "screenshot": "reports/screenshots/after/MOVING.png"
     },
     {
       "step": "hold on low confidence",
       "status": "HOLDING",
-      "screenshot": "reports/screenshots/HOLD_UNCERTAIN.png"
+      "screenshot": "reports/screenshots/after/HOLD_UNCERTAIN.png"
     },
     {
       "step": "run to completion",
       "status": "COMPLETED",
-      "screenshot": "reports/screenshots/COMPLETED.png"
+      "screenshot": "reports/screenshots/after/COMPLETED.png"
     },
     {
       "step": "start again",
@@ -28,12 +28,12 @@
     {
       "step": "obstacle 50 cm",
       "status": "SLOWING",
-      "screenshot": "reports/screenshots/SLOW_DOWN.png"
+      "screenshot": "reports/screenshots/after/SLOW_DOWN.png"
     },
     {
       "step": "obstacle 20 cm",
       "status": "SAFE_STOPPED",
-      "screenshot": "reports/screenshots/SAFE_STOPPED.png"
+      "screenshot": "reports/screenshots/after/SAFE_STOPPED.png"
     },
     {
       "step": "manual resume",
@@ -41,8 +41,8 @@
     },
     {
       "step": "clear obstacle",
-      "status": "HOLDING",
-      "screenshot": "reports/screenshots/READY.png"
+      "status": "READY",
+      "screenshot": "reports/screenshots/after/READY.png"
     },
     {
       "step": "start after clearing",
@@ -51,7 +51,7 @@
     {
       "step": "second run completes",
       "status": "COMPLETED",
-      "screenshot": "reports/screenshots/COMPLETED_second_run.png"
+      "screenshot": "reports/screenshots/after/COMPLETED_second_run.png"
     },
     {
       "step": "pause",
@@ -63,14 +63,14 @@
     }
   ],
   "screenshots": {
-    "IDLE": "reports/screenshots/IDLE.png",
-    "MOVING": "reports/screenshots/MOVING.png",
-    "HOLD_UNCERTAIN": "reports/screenshots/HOLD_UNCERTAIN.png",
-    "COMPLETED": "reports/screenshots/COMPLETED.png",
-    "SLOW_DOWN": "reports/screenshots/SLOW_DOWN.png",
-    "SAFE_STOPPED": "reports/screenshots/SAFE_STOPPED.png",
-    "READY": "reports/screenshots/READY.png",
-    "COMPLETED_second_run": "reports/screenshots/COMPLETED_second_run.png"
+    "IDLE": "reports/screenshots/after/IDLE.png",
+    "MOVING": "reports/screenshots/after/MOVING.png",
+    "HOLD_UNCERTAIN": "reports/screenshots/after/HOLD_UNCERTAIN.png",
+    "COMPLETED": "reports/screenshots/after/COMPLETED.png",
+    "SLOW_DOWN": "reports/screenshots/after/SLOW_DOWN.png",
+    "SAFE_STOPPED": "reports/screenshots/after/SAFE_STOPPED.png",
+    "READY": "reports/screenshots/after/READY.png",
+    "COMPLETED_second_run": "reports/screenshots/after/COMPLETED_second_run.png"
   },
   "retained_state_on_open": {
     "status": "IDLE",
@@ -85,7 +85,7 @@
   "webgl": {
     "canvas_visible": true,
     "fallback_shown": false,
-    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4050 Laptop GPU (0x000028A1) Direct3D11 vs_5_0 ps_5_0, D3D11)"
   },
   "hold_uncertain": {
     "protection_state": "HOLDING",
@@ -106,38 +106,85 @@
   },
   "after_clear": {
     "obstacle": "N/A",
-    "status": "HOLDING",
-    "confidence_of_last_window": "0.450",
-    "action": "\u0e2b\u0e22\u0e38\u0e14\u0e23\u0e2d\nHOLD_UNCERTAIN"
+    "status": "READY",
+    "confidence_of_last_window": "0.701",
+    "action": "\u0e40\u0e14\u0e34\u0e19\u0e17\u0e32\u0e07\nMOVE"
   },
   "cargo_switch": {
     "fragile": "\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e40\u0e1b\u0e23\u0e32\u0e30\u0e1a\u0e32\u0e07",
-    "screenshot": "reports/screenshots/FRAGILE_cargo.png"
+    "screenshot": "reports/screenshots/after/FRAGILE_cargo.png"
   },
   "route_switch": {
     "nodes": "A2 \u2192 A1 \u2192 B1 \u2192 C1",
     "policy": ""
   },
+  "camera_modes": {
+    "follow": {
+      "pressed": true,
+      "canvas_mode": "follow",
+      "screenshot": "reports/screenshots/after/Follow_camera.png"
+    },
+    "robot-pov": {
+      "pressed": true,
+      "canvas_mode": "robot-pov",
+      "screenshot": "reports/screenshots/after/Robot_POV.png"
+    },
+    "overview": {
+      "pressed": true,
+      "canvas_mode": "overview",
+      "screenshot": "reports/screenshots/after/Overview_camera.png"
+    }
+  },
   "laptop_viewport": {
     "size": "1440x900",
     "horizontal_overflow_px": 0,
     "canvas_size": [
-      1028,
-      612
+      1013,
+      1008
     ],
-    "screenshot": "reports/screenshots/READY_laptop_1440x900.png"
+    "screenshot": "reports/screenshots/after/Mission_1440x900.png"
+  },
+  "viewport_1280x720": {
+    "size": "1280x720",
+    "horizontal_overflow_px": 0,
+    "screenshot": "reports/screenshots/after/Mission_1280x720.png"
+  },
+  "zoom_200_percent": {
+    "method": "1920x1080 at 200%: effective CSS viewport 960x540",
+    "effective_css_viewport": [
+      960,
+      540
+    ],
+    "horizontal_overflow_px": 0,
+    "stage_overlays_overlap": false,
+    "screenshot": "reports/screenshots/after/Mission_200_percent_zoom.png"
   },
   "keyboard_focus_order": [
-    "A",
-    "A",
-    "reset-camera",
-    "BUTTON",
-    "BUTTON",
-    "BUTTON",
-    "BUTTON",
-    "cargo"
+    {
+      "id": "follow",
+      "focus_visible": true,
+      "outline_px": 2
+    },
+    {
+      "id": "robot-pov",
+      "focus_visible": true,
+      "outline_px": 2
+    }
   ],
-  "fps": "29 fps",
+  "keyboard_camera_activation": true,
+  "fps": {
+    "samples": [
+      180,
+      180,
+      180,
+      180,
+      180
+    ],
+    "min": 180,
+    "median": 180,
+    "max": 180,
+    "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4050 Laptop GPU (0x000028A1) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
   "console": {
     "errors": [],
     "message_count": 0,
@@ -148,20 +195,24 @@
     "reduced_motion": {
       "status_rendered": "IDLE",
       "controls_usable": true,
+      "camera_mode": "robot-pov",
+      "camera_buttons_disabled": false,
       "telemetry_rendered": "A1 \u2192 A2 \u2192 B2 \u2192 C2",
       "canvas_visible": true,
       "fallback_shown": false,
       "console_errors": [],
-      "screenshot": "reports/screenshots/fallback_reduced_motion.png"
+      "screenshot": "reports/screenshots/after/reduced_motion.png"
     },
     "no_webgl": {
       "status_rendered": "IDLE",
       "controls_usable": true,
+      "camera_mode": null,
+      "camera_buttons_disabled": true,
       "telemetry_rendered": "A1 \u2192 A2 \u2192 B2 \u2192 C2",
       "canvas_visible": false,
       "fallback_shown": true,
       "console_errors": [],
-      "screenshot": "reports/screenshots/fallback_no_webgl.png"
+      "screenshot": "reports/screenshots/after/no_webgl.png"
     }
   },
   "fleet_intelligence": {
@@ -172,17 +223,58 @@
     "simulated_badge": "SIMULATED \u00b7 \u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e08\u0e33\u0e25\u0e2d\u0e07",
     "simulated_notice_visible": true,
     "zone_rows": 4,
-    "event_rows": 50,
-    "mission_rows": 42,
+    "event_rows": 20,
+    "mission_rows": 20,
     "series_charts": 5,
-    "export_command": ".\\.venv\\Scripts\\python.exe -m cargo.export --format jsonl",
+    "export_command": "",
     "first_tab_stop": "skip-link",
     "horizontal_overflow_px": 0,
     "console_errors": [],
-    "url": "http://127.0.0.1:8080/fleet.html?api=http%3A%2F%2F127.0.0.1%3A8099",
-    "screenshot": "reports/screenshots/FLEET_intelligence.png",
+    "url": "http://127.0.0.1:8080/fleet.html?api=http%3A%2F%2F127.0.0.1%3A8100",
+    "screenshot": "reports/screenshots/after/Fleet_overview_1440x900.png",
+    "events_page_1": {
+      "page": "\u0e2b\u0e19\u0e49\u0e32 1",
+      "rows": 20,
+      "previous_disabled": true,
+      "next_disabled": false,
+      "screenshot": "reports/screenshots/after/Fleet_safety_events_page_1.png"
+    },
+    "events_page_2": {
+      "page": "\u0e2b\u0e19\u0e49\u0e32 2",
+      "rows": 20,
+      "previous_disabled": false,
+      "next_disabled": false,
+      "screenshot": "reports/screenshots/after/Fleet_safety_events_page_2.png"
+    },
+    "filtered_events": {
+      "filter": "critical",
+      "page": "\u0e2b\u0e19\u0e49\u0e32 1",
+      "rows": 20,
+      "screenshot": "reports/screenshots/after/Fleet_filtered_events.png"
+    },
+    "mission_pagination": {
+      "page": "\u0e2b\u0e19\u0e49\u0e32 2",
+      "rows": 20,
+      "previous_disabled": false,
+      "screenshot": "reports/screenshots/after/Fleet_mission_pagination.png"
+    },
+    "csv_download": {
+      "path": "reports/downloads/cargoshield_safety_events_20260726T141348Z.csv",
+      "filename": "cargoshield_safety_events_20260726T141348Z.csv",
+      "utf8_bom": true,
+      "rows": 350,
+      "filter": "critical",
+      "filtered": true,
+      "screenshot": "reports/screenshots/after/Fleet_CSV_success.png"
+    },
+    "data_tools": {
+      "collapsed": true,
+      "screenshot": "reports/screenshots/after/Fleet_collapsed_data_tools.png"
+    },
     "desktop_overflow_px": 0,
-    "screenshot_desktop": "reports/screenshots/FLEET_intelligence_1920x1080.png",
+    "screenshot_desktop": "reports/screenshots/after/Fleet_overview_1920x1080.png",
+    "laptop_overflow_px": 0,
+    "screenshot_1280x720": "reports/screenshots/after/Fleet_overview_1280x720.png",
     "maintenance_assistant": {
       "questions": [
         "why-stop",
@@ -196,10 +288,10 @@
       "provider_line": "Hermes provider: Not connected",
       "badges": "READ-ONLY\nHUMAN APPROVAL REQUIRED\nHermes provider: Not connected",
       "answer_summary": "1 robot(s) have an unresolved finding or a non-healthy state.",
-      "answer_meta": "\u0e04\u0e33\u0e16\u0e32\u0e21: which robots need inspection? \u00b7 \u0e27\u0e34\u0e40\u0e04\u0e23\u0e32\u0e30\u0e2b\u0e4c\u0e41\u0e1a\u0e1a deterministic (\u0e44\u0e21\u0e48\u0e21\u0e35\u0e42\u0e21\u0e40\u0e14\u0e25\u0e20\u0e32\u0e29\u0e32) \u00b7 \u0e2b\u0e25\u0e31\u0e01\u0e10\u0e32\u0e19 1 \u0e41\u0e16\u0e27 \u00b7 \u0e2a\u0e23\u0e49\u0e32\u0e07\u0e40\u0e21\u0e37\u0e48\u0e2d 18:20:19",
+      "answer_meta": "\u0e04\u0e33\u0e16\u0e32\u0e21: which robots need inspection? \u00b7 \u0e27\u0e34\u0e40\u0e04\u0e23\u0e32\u0e30\u0e2b\u0e4c\u0e41\u0e1a\u0e1a deterministic (\u0e44\u0e21\u0e48\u0e21\u0e35\u0e42\u0e21\u0e40\u0e14\u0e25\u0e20\u0e32\u0e29\u0e32) \u00b7 \u0e2b\u0e25\u0e31\u0e01\u0e10\u0e32\u0e19 1 \u0e41\u0e16\u0e27 \u00b7 \u0e2a\u0e23\u0e49\u0e32\u0e07\u0e40\u0e21\u0e37\u0e48\u0e2d 9:13:51 PM",
       "evidence_rows": 1,
       "free_text_inputs": 0,
-      "screenshot": "reports/screenshots/FLEET_maintenance_assistant.png"
+      "screenshot": "reports/screenshots/after/FLEET_maintenance_assistant.png"
     }
   }
 }

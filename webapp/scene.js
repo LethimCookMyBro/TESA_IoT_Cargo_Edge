@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { OrbitControls } from './vendor/three/OrbitControls.js';
 import {
   ZONE_POSITIONS, DEMO_EDGES, motion, routePosition, obstacleTone, surfaceTint, read, actionTone,
+  CAMERA_MODES, ROUTE_WIDTHS,
 } from './controls.js';
 
 // Lifted out of near-black: the previous floor (#14181d) under a dark background read as an unlit
@@ -231,6 +232,8 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
   controls.maxDistance = 90;
   controls.maxPolarAngle = Math.PI * 0.48;
   controls.target.copy(HOME.target);
+  controls.enableDamping = !reducedMotion;
+  controls.saveState();
 
   // Warehouse ambient: the sky term lifts the floor, the ground term keeps undersides readable.
   scene.add(new THREE.HemisphereLight(0xbcd8ff, 0x35424f, 1.7));
@@ -287,7 +290,7 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
   for (const [from, to] of DEMO_EDGES) {
     const lane = new THREE.Mesh(segmentGeometry, laneMaterial);
     lane.position.y = 0.02;
-    placeSegment(lane, from, to, 1.1);
+    placeSegment(lane, from, to, ROUTE_WIDTHS.lane);
     scene.add(lane);
   }
 
@@ -346,6 +349,8 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
   let target = { fraction: 0, nodes: [], speed: 0, animate: false, halted: false };
   let latest = null;
   let missionKey = '';
+  let cameraMode = 'overview';
+  canvas.dataset.cameraMode = cameraMode;
   let frames = 0;
   let fpsWindow = performance.now();
   let fps = 0;
@@ -381,12 +386,16 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
       const to = nodes[index + 1];
       mesh.visible = Boolean(from && to);
       if (!mesh.visible) continue;
-      placeSegment(mesh, from, to, 1.5);
       const span = nodes.length - 1;
       const start = index / span;
       const end = (index + 1) / span;
-      // Three distinct colours: behind the robot, the hop it is on, and the hops still to walk.
-      mesh.material.color.setHex(fraction >= end - 1e-6 ? COLORS.travelled : fraction > start ? COLORS.current : COLORS.remaining);
+      // Width and colour both encode phase, so current/remaining/travelled stay legible in
+      // greyscale and on displays where adjacent blue-green hues are difficult to separate.
+      const phase = fraction >= end - 1e-6
+        ? 'travelled'
+        : fraction >= start - 1e-6 ? 'current' : 'remaining';
+      placeSegment(mesh, from, to, ROUTE_WIDTHS[phase]);
+      mesh.material.color.setHex(COLORS[phase]);
     }
   }
 
@@ -476,6 +485,32 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
   let running = true;
   let raf = 0;
 
+  function cameraPose() {
+    const forward = new THREE.Vector3(Math.sin(visual.heading), 0, Math.cos(visual.heading));
+    if (cameraMode === 'follow') {
+      return {
+        position: robot.position.clone().addScaledVector(forward, -9).add(new THREE.Vector3(0, 6, 0)),
+        target: robot.position.clone().addScaledVector(forward, 3).add(new THREE.Vector3(0, 1.7, 0)),
+      };
+    }
+    return {
+      position: robot.position.clone().addScaledVector(forward, 2).add(new THREE.Vector3(0, 2.1, 0)),
+      target: robot.position.clone().addScaledVector(forward, 14).add(new THREE.Vector3(0, 2, 0)),
+    };
+  }
+
+  function updateCamera(dt) {
+    if (cameraMode === 'overview') {
+      controls.update();
+      return;
+    }
+    const pose = cameraPose();
+    const amount = reducedMotion ? 1 : 1 - Math.exp(-dt * 7);
+    camera.position.lerp(pose.position, amount);
+    controls.target.lerp(pose.target, amount);
+    camera.lookAt(controls.target);
+  }
+
   function frame() {
     if (!running) return;
     raf = requestAnimationFrame(frame);
@@ -528,7 +563,7 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
       beacon.material.emissiveIntensity = target.halted ? 0.7 + pulse : 1.3;
     }
 
-    controls.update();
+    updateCamera(dt);
     renderer.render(scene, camera);
 
     frames += 1;
@@ -554,12 +589,27 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
   resize();
   raf = requestAnimationFrame(frame);
 
-  return {
-    apply,
-    resetCamera() {
+  function setCameraMode(mode) {
+    if (!CAMERA_MODES.includes(mode)) return false;
+    cameraMode = mode;
+    canvas.dataset.cameraMode = mode;
+    controls.enabled = mode === 'overview';
+    if (mode === 'overview') {
       camera.position.copy(HOME.position);
       controls.target.copy(HOME.target);
       controls.update();
+    } else {
+      updateCamera(reducedMotion ? 1 : 0.05);
+    }
+    return true;
+  }
+
+  return {
+    apply,
+    setCameraMode,
+    getCameraMode() { return cameraMode; },
+    resetCamera() {
+      setCameraMode('overview');
     },
     onFps(handler) { onFps.add(handler); return () => onFps.delete(handler); },
   };

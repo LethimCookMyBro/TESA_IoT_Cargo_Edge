@@ -23,6 +23,8 @@
   "Hermes provider: Not connected". A `hermes-agent` CLI happens to be installed on the development
   workstation, but nothing in this repository references, configures, launches or talks to it, and
   no Hermes endpoint or tool contract has been proven. Do not describe the integration as active.
-- Frame-rate figures (26-32 fps headless on SwiftShader software rendering, 177 fps on an RTX 4050)
-  measure web rendering on a workstation and vary run to run. They say nothing about inference
-  performance on the target board.
+- CSV endpoints intentionally cap a single export at 5,000 rows and do not stream arbitrarily
+  large history. Use narrower filters for larger datasets.
+- Headless SwiftShader performance is highly load-dependent; the headed GPU verification measured
+  172-181 fps (median 180) on an RTX 4050. These figures measure web rendering on one workstation
+  and say nothing about inference performance on the target board.

@@ -230,17 +230,22 @@ removed mid-run to prove that the Safety Core keeps deciding. Evidence is writte
 .\.venv\Scripts\python.exe -m pip_audit -r requirements.txt
 ```
 
-The latest results recorded in this checkout are **141 tests + 139 subtests**, MQTT E2E **14/14**,
+The latest results recorded in this checkout are **165 tests + 169 subtests**, MQTT E2E **14/14**,
 Fleet Scenario **12/12**, browser verification with no console errors, and no known
 vulnerabilities reported by `pip-audit`. Every latency number is from the local simulator, not
 board performance.
 
 Browser evidence covers `IDLE`, `MOVING`, `HOLD_UNCERTAIN`, `SLOW_DOWN`, `SAFE_STOPPED`,
-`COMPLETED`, the Fleet Guardian page, the Maintenance Assistant, 1920×1080 and 1440×900, plus the
-no-WebGL and reduced-motion fallbacks; the images are in `reports/screenshots/`. Measured frame
-rate: **26–32 fps** on headless SwiftShader (software rendering, varying run to run) and
-**177 fps** on a real GPU (RTX 4050). Both are web rendering figures, never board inference
-performance.
+`COMPLETED`, Overview/Follow/Robot POV cameras, Fleet Guardian, the Maintenance Assistant,
+1920×1080, 1440×900, 1280×720, an effective 200% zoom viewport, and the no-WebGL and
+reduced-motion fallbacks. Before/after images are in `reports/screenshots/before/` and
+`reports/screenshots/after/`. The latest GPU run measured **172–181 fps (median 180)** on an
+RTX 4050. This is a web-rendering figure, never board inference performance.
+
+Safety Events and Mission History paginate independently with at most 20 rows per page. Event
+filters reset only the event page. CSV downloads use the active filter, fixed column order,
+RFC 4180 escaping, an Excel-compatible UTF-8 BOM, and apostrophe-prefix cells beginning with
+`=`, `+`, `-`, or `@` so spreadsheet software does not evaluate database text as a formula.
 
 ## Current boundaries
 

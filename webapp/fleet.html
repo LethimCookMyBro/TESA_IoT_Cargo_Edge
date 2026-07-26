@@ -103,35 +103,24 @@
     </div>
   </section>
 
-  <!-- 3. Risk exposure by zone -->
-  <section class="panel" aria-labelledby="zones-heading">
-    <h2 id="zones-heading">ความเสี่ยงสะสมรายโซน / เส้นทาง</h2>
-    <p class="hint">แรงสั่นสะสมต่อสินค้าในแต่ละโซน ใช้เป็นต้นทุนเส้นทางของภารกิจรอบถัดไป</p>
-    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="zones-heading">
-      <table class="grid">
-        <thead>
-          <tr>
-            <th scope="col">โซน</th><th scope="col">ตัวอย่าง</th>
-            <th scope="col">การสั่นเฉลี่ย</th><th scope="col">สูงสุด</th>
-            <th scope="col">ช่วงเสี่ยงสูง</th><th scope="col">ระดับ</th>
-          </tr>
-        </thead>
-        <tbody id="zone-rows"><tr><td colspan="6">ยังไม่มีข้อมูลโซน</td></tr></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- 4. Recent missions and safety events -->
+  <!-- 3. Safety events -->
   <section class="panel" aria-labelledby="events-heading">
     <h2 id="events-heading">เหตุการณ์ความปลอดภัยล่าสุด</h2>
-    <p class="field"><label for="event-severity">ระดับความรุนแรง</label>
-      <select id="event-severity">
-        <option value="">ทั้งหมด</option>
-        <option value="critical">critical · วิกฤต</option>
-        <option value="warning">warning · เตือน</option>
-        <option value="info">info · ข้อมูล</option>
-      </select>
-    </p>
+    <div class="table-actions">
+      <p class="field"><label for="event-severity">ระดับความรุนแรง</label>
+        <select id="event-severity">
+          <option value="">ทั้งหมด</option>
+          <option value="critical">critical · วิกฤต</option>
+          <option value="warning">warning · เตือน</option>
+          <option value="info">info · ข้อมูล</option>
+        </select>
+      </p>
+      <button id="event-download" class="secondary download-button" type="button">
+        <span class="download-glyph" aria-hidden="true">↓</span>
+        ส่งออก CSV
+      </button>
+    </div>
+    <p class="download-status" id="event-download-status" role="status" aria-live="polite"></p>
     <div class="table-scroll" tabindex="0" role="region" aria-labelledby="events-heading">
       <table class="grid">
         <thead>
@@ -139,70 +128,45 @@
               <th scope="col">ชนิด</th><th scope="col">การทำงาน</th><th scope="col">สุขภาพ</th>
               <th scope="col">เหตุผล</th></tr>
         </thead>
-        <tbody id="event-rows"><tr><td colspan="7">ยังไม่มีเหตุการณ์</td></tr></tbody>
+        <tbody id="event-rows"><tr><td colspan="7">กำลังโหลดข้อมูล…</td></tr></tbody>
       </table>
     </div>
+    <nav class="pager" aria-label="แบ่งหน้าเหตุการณ์ความปลอดภัย">
+      <button id="event-prev" class="ghost" type="button" disabled>Previous</button>
+      <output id="event-page" aria-live="polite">หน้า 1</output>
+      <span id="event-range">0 รายการ</span>
+      <button id="event-next" class="ghost" type="button" disabled>Next</button>
+    </nav>
+  </section>
 
-    <h3 class="sub">ภารกิจล่าสุด</h3>
-    <div class="table-scroll" tabindex="0" role="region" aria-label="ประวัติภารกิจ">
+  <!-- 4. Mission history -->
+  <section class="panel" aria-labelledby="missions-heading">
+    <div class="table-actions">
+      <h2 id="missions-heading">ประวัติภารกิจ</h2>
+      <button id="mission-download" class="secondary download-button" type="button">
+        <span class="download-glyph" aria-hidden="true">↓</span>
+        ส่งออก CSV
+      </button>
+    </div>
+    <p class="download-status" id="mission-download-status" role="status" aria-live="polite"></p>
+    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="missions-heading">
       <table class="grid">
         <thead>
           <tr><th scope="col">ภารกิจ</th><th scope="col">หุ่นยนต์</th><th scope="col">สินค้า</th>
               <th scope="col">เส้นทาง</th><th scope="col">ต้นทุน</th><th scope="col">เริ่ม</th></tr>
         </thead>
-        <tbody id="mission-rows"><tr><td colspan="6">ยังไม่มีภารกิจที่บันทึกไว้</td></tr></tbody>
+        <tbody id="mission-rows"><tr><td colspan="6">กำลังโหลดข้อมูล…</td></tr></tbody>
       </table>
     </div>
+    <nav class="pager" aria-label="แบ่งหน้าประวัติภารกิจ">
+      <button id="mission-prev" class="ghost" type="button" disabled>Previous</button>
+      <output id="mission-page" aria-live="polite">หน้า 1</output>
+      <span id="mission-range">0 รายการ</span>
+      <button id="mission-next" class="ghost" type="button" disabled>Next</button>
+    </nav>
   </section>
 
-  <!-- 5. History trends -->
-  <section class="panel" aria-labelledby="series-heading">
-    <h2 id="series-heading">แนวโน้มตามเวลา</h2>
-    <p class="hint">เลือกหุ่นยนต์เพื่อดูค่าที่บันทึกไว้ในฐานข้อมูลประวัติ (อ่านอย่างเดียว)</p>
-    <p class="field"><label for="series-robot">หุ่นยนต์</label>
-      <select id="series-robot"></select>
-    </p>
-    <div class="series" id="series-charts"></div>
-  </section>
-
-  <!-- 6. Data quality and provenance -->
-  <section class="panel" aria-labelledby="quality-heading">
-    <h2 id="quality-heading">คุณภาพและที่มาของข้อมูล</h2>
-    <ul class="risk-list" id="quality-list"><li>ยังไม่มีข้อมูล</li></ul>
-  </section>
-
-  <!-- 7. Export -->
-  <section class="panel" aria-labelledby="export-heading">
-    <h2 id="export-heading">ส่งออกชุดข้อมูลสำหรับการฝึกโมเดล</h2>
-    <p class="hint">
-      การส่งออกเป็นการเขียนไฟล์ จึงไม่ผ่าน API อ่านอย่างเดียว หน้านี้สร้างคำสั่งให้คัดลอกไปรันเอง
-      และแสดงตัวอย่าง manifest ของการส่งออกที่ผ่านมา
-    </p>
-    <div class="export-controls">
-      <div class="field">
-        <label for="export-robots">หุ่นยนต์ (คั่นด้วยจุลภาค)</label>
-        <input id="export-robots" type="text" placeholder="robot-alpha,robot-bravo">
-      </div>
-      <div class="field">
-        <label for="export-provenance">ที่มา</label>
-        <select id="export-provenance">
-          <option value="">ทั้งหมด</option>
-          <option value="SIMULATED">SIMULATED</option>
-          <option value="DATASET">DATASET</option>
-          <option value="HARDWARE">HARDWARE</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="export-format">รูปแบบ</label>
-        <select id="export-format"><option value="jsonl">jsonl</option><option value="csv">csv</option></select>
-      </div>
-    </div>
-    <pre class="command" id="export-command" tabindex="0" aria-label="คำสั่งส่งออกที่สร้างขึ้น"></pre>
-    <h3 class="sub">ตัวอย่าง manifest ล่าสุด</h3>
-    <pre class="command" id="export-manifest" tabindex="0" aria-label="manifest ของการส่งออกล่าสุด">ยังไม่มีการส่งออก</pre>
-  </section>
-
-  <!-- 8. Maintenance Assistant -->
+  <!-- 5. Maintenance Assistant -->
   <section class="panel" aria-labelledby="copilot-heading">
     <h2 id="copilot-heading">Maintenance Assistant — Deterministic Read-only Analysis</h2>
 
@@ -229,6 +193,69 @@
       <p class="answer-empty">เลือกคำถามด้านบนเพื่อดูคำตอบพร้อมแถวหลักฐาน</p>
     </div>
   </section>
+
+  <!-- 6. Advanced analysis and training tools -->
+  <details id="data-tools" class="panel data-tools">
+    <summary>เครื่องมือข้อมูลขั้นสูง · กราฟ ที่มาข้อมูล และ Training export</summary>
+    <div class="data-tool-grid">
+      <section class="data-tool" aria-labelledby="zones-heading">
+        <h2 id="zones-heading">ความเสี่ยงสะสมรายโซน / เส้นทาง</h2>
+        <p class="hint">แรงสั่นสะสมต่อสินค้าในแต่ละโซน ใช้เป็นต้นทุนเส้นทางของภารกิจรอบถัดไป</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-labelledby="zones-heading">
+          <table class="grid">
+            <thead>
+              <tr><th scope="col">โซน</th><th scope="col">ตัวอย่าง</th>
+                  <th scope="col">การสั่นเฉลี่ย</th><th scope="col">สูงสุด</th>
+                  <th scope="col">ช่วงเสี่ยงสูง</th><th scope="col">ระดับ</th></tr>
+            </thead>
+            <tbody id="zone-rows"><tr><td colspan="6">ยังไม่มีข้อมูลโซน</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="data-tool" aria-labelledby="series-heading">
+        <h2 id="series-heading">แนวโน้มตามเวลา</h2>
+        <p class="hint">เลือกหุ่นยนต์เพื่อดูค่าที่บันทึกไว้ในฐานข้อมูลประวัติ (อ่านอย่างเดียว)</p>
+        <p class="field"><label for="series-robot">หุ่นยนต์</label>
+          <select id="series-robot"></select>
+        </p>
+        <div class="series" id="series-charts"></div>
+      </section>
+
+      <section class="data-tool" aria-labelledby="quality-heading">
+        <h2 id="quality-heading">คุณภาพและที่มาของข้อมูล</h2>
+        <ul class="risk-list" id="quality-list"><li>ยังไม่มีข้อมูล</li></ul>
+      </section>
+
+      <section class="data-tool" aria-labelledby="export-heading">
+        <h2 id="export-heading">ส่งออกชุดข้อมูลสำหรับการฝึกโมเดล</h2>
+        <p class="hint">
+          Training export เป็นการเขียนไฟล์ จึงไม่ผ่าน History API แบบอ่านอย่างเดียว
+          หน้านี้สร้างคำสั่งให้คัดลอกไปรันเองและแสดง manifest ล่าสุด
+        </p>
+        <div class="export-controls">
+          <div class="field">
+            <label for="export-robots">หุ่นยนต์ (คั่นด้วยจุลภาค)</label>
+            <input id="export-robots" type="text" placeholder="robot-alpha,robot-bravo">
+          </div>
+          <div class="field">
+            <label for="export-provenance">ที่มา</label>
+            <select id="export-provenance">
+              <option value="">ทั้งหมด</option><option value="SIMULATED">SIMULATED</option>
+              <option value="DATASET">DATASET</option><option value="HARDWARE">HARDWARE</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="export-format">รูปแบบ</label>
+            <select id="export-format"><option value="jsonl">jsonl</option><option value="csv">csv</option></select>
+          </div>
+        </div>
+        <pre class="command" id="export-command" tabindex="0" aria-label="คำสั่งส่งออกที่สร้างขึ้น"></pre>
+        <h3 class="sub">ตัวอย่าง manifest ล่าสุด</h3>
+        <pre class="command" id="export-manifest" tabindex="0" aria-label="manifest ของการส่งออกล่าสุด">ยังไม่มีการส่งออก</pre>
+      </section>
+    </div>
+  </details>
 
   <details class="panel tech">
     <summary>สถานะระบบเบื้องหลัง (PostgreSQL Historian · History API)</summary>

@@ -220,16 +220,23 @@ scenario จำลองหุ่นยนต์สามตัวพร้อ�
 .\.venv\Scripts\python.exe -m pip_audit -r requirements.txt
 ```
 
-ผลล่าสุดที่บันทึกไว้ใน checkout นี้: **141 tests + 139 subtests**, MQTT E2E **14/14**,
+ผลล่าสุดที่บันทึกไว้ใน checkout นี้: **165 tests + 169 subtests**, MQTT E2E **14/14**,
 Fleet Scenario **12/12**, browser verification ไม่มี console error และ `pip-audit`
 ไม่พบช่องโหว่ที่รู้จัก ตัวเลข latency ทั้งหมดเป็นผลจาก local simulator ไม่ใช่ประสิทธิภาพของบอร์ด
 
 Browser evidence ครอบคลุมสถานะ `IDLE`, `MOVING`, `HOLD_UNCERTAIN`, `SLOW_DOWN`, `SAFE_STOPPED`,
-`COMPLETED`, หน้า Fleet Guardian, Maintenance Assistant, ความละเอียด 1920×1080 และ 1440×900
-รวมถึงโหมด no-WebGL และ reduced-motion — ภาพอยู่ใน `reports/screenshots/`
-อัตราเฟรมที่วัดได้: **26–32 fps** บน headless SwiftShader (software rendering ค่าต่างกันในแต่ละรอบ)
-และ **177 fps** บน GPU จริง (RTX 4050) ทั้งสองค่าเป็นการเรนเดอร์หน้าเว็บ
+`COMPLETED`, กล้อง Overview/Follow/Robot POV, หน้า Fleet Guardian, Maintenance Assistant,
+ความละเอียด 1920×1080, 1440×900 และ 1280×720, effective viewport ที่ 200% zoom,
+รวมถึงโหมด no-WebGL และ reduced-motion — ภาพก่อน/หลังอยู่ใน
+`reports/screenshots/before/` และ `reports/screenshots/after/`
+อัตราเฟรมที่วัดได้รอบล่าสุด: **172–181 fps (median 180)** บน GPU จริง (RTX 4050)
+ค่านี้เป็นการเรนเดอร์หน้าเว็บ
 ไม่ใช่ประสิทธิภาพการ inference ของบอร์ด
+
+ตาราง Safety Events และ Mission History แบ่งหน้าแยกกันหน้าละไม่เกิน 20 แถว
+ตัวกรองเหตุการณ์จะรีเซ็ตเฉพาะหน้าของเหตุการณ์ และ CSV ใช้ลำดับคอลัมน์คงที่,
+RFC 4180, UTF-8 BOM สำหรับ Excel และเติม apostrophe หน้าเซลล์ที่อาจถูกตีความเป็นสูตร
+(`=`, `+`, `-`, `@`) การดาวน์โหลดใช้ตัวกรองที่กำลังแสดงอยู่
 
 ## ขอบเขตที่ยังไม่มี
 

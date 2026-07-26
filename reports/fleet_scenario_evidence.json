@@ -1,5 +1,5 @@
 {
-  "run_id": "run-1785062931091-91d1c8f4",
+  "run_id": "run-1785073909711-c8dcb141",
   "broker": "127.0.0.1:1883",
   "seed": 7,
   "samples_per_robot": 24,
@@ -41,7 +41,7 @@
     "queue_depth": 0,
     "queue_capacity": 5000,
     "dropped": 0,
-    "written": 81,
+    "written": 85,
     "retries": 0,
     "failed_rows": 0,
     "last_error": null
@@ -49,14 +49,14 @@
   "database_outage": {
     "held_for_s": 1.61,
     "samples_decided_before": 19,
-    "samples_decided_during_outage": 27,
+    "samples_decided_during_outage": 26,
     "safety_core_kept_deciding": true,
     "historian_during_outage": {
       "database": "postgresql://cargoshield@127.0.0.1:1/cargoshield",
       "connected": false,
       "queue_depth": 50,
       "queue_capacity": 50,
-      "dropped": 61,
+      "dropped": 53,
       "written": 0,
       "retries": 0,
       "failed_rows": 0,
@@ -64,7 +64,7 @@
     },
     "note": "the writer could not reach any database; decisions continued unchanged"
   },
-  "elapsed_s": 2.77,
+  "elapsed_s": 2.75,
   "published": {
     "robot-alpha": 24,
     "robot-bravo": 24,
@@ -159,25 +159,25 @@
         "score": 0.9169586333333335,
         "observations": 6,
         "surface": "concrete",
-        "updated_ms": 1785062935537
+        "updated_ms": 1785073915958
       },
       "A2": {
         "score": 0.9584793166666667,
         "observations": 6,
         "surface": "hard_tiles",
-        "updated_ms": 1785062935917
+        "updated_ms": 1785073916338
       },
       "B2": {
         "score": 0.9584793166666667,
         "observations": 6,
         "surface": "tiled",
-        "updated_ms": 1785062936293
+        "updated_ms": 1785073916707
       },
       "C2": {
         "score": 0.9584793166666667,
         "observations": 6,
         "surface": "hard_tiles",
-        "updated_ms": 1785062936658
+        "updated_ms": 1785073917076
       }
     },
     "route_planned_for_next_mission": [
@@ -194,7 +194,7 @@
     "queue_depth": 0,
     "queue_capacity": 5000,
     "dropped": 0,
-    "written": 93,
+    "written": 97,
     "retries": 0,
     "failed_rows": 0,
     "last_error": null
@@ -206,7 +206,7 @@
       "queue_depth": 0,
       "queue_capacity": 5000,
       "dropped": 0,
-      "written": 81,
+      "written": 85,
       "retries": 0,
       "failed_rows": 0,
       "last_error": null
@@ -216,7 +216,7 @@
       "connected": false,
       "queue_depth": 50,
       "queue_capacity": 50,
-      "dropped": 61,
+      "dropped": 53,
       "written": 0,
       "retries": 0,
       "failed_rows": 0,
@@ -228,24 +228,24 @@
       "queue_depth": 0,
       "queue_capacity": 5000,
       "dropped": 0,
-      "written": 93,
+      "written": 97,
       "retries": 0,
       "failed_rows": 0,
       "last_error": null
     }
   },
   "historian_totals": {
-    "dropped": 61,
-    "written": 174,
+    "dropped": 53,
+    "written": 182,
     "retries": 0,
     "failed_rows": 0
   },
   "latency": {
     "samples": 68,
-    "p50_ms": 0.1572,
-    "p95_ms": 0.3336,
-    "max_ms": 0.6206,
-    "mean_ms": 0.1759,
+    "p50_ms": 0.291,
+    "p95_ms": 0.4875,
+    "max_ms": 0.7344,
+    "mean_ms": 0.3199,
     "measurement": "local simulator ingest-to-decision, not board performance"
   },
   "fleet_status_counts": {
@@ -256,25 +256,25 @@
   },
   "database_rows_total": {
     "robots": 5,
-    "missions": 42,
-    "telemetry_samples": 702,
-    "model_predictions": 706,
-    "derived_features": 706,
-    "fleet_events": 915,
+    "missions": 50,
+    "telemetry_samples": 787,
+    "model_predictions": 791,
+    "derived_features": 791,
+    "fleet_events": 1020,
     "maintenance_findings": 0
   },
   "database_rows_by_robot": {
-    "robot-alpha": 14,
-    "robot-bravo": 14,
+    "robot-alpha": 15,
+    "robot-bravo": 15,
     "robot-charlie": 13
   },
   "database_rows_scope": {
-    "run_id": "run-1785062931091-91d1c8f4",
+    "run_id": "run-1785073909711-c8dcb141",
     "mission_ids": [
-      "run-1785062931091-91d1c8f4-m1-robot-alpha",
-      "run-1785062931091-91d1c8f4-m1-robot-bravo",
-      "run-1785062931091-91d1c8f4-m1-robot-charlie",
-      "run-1785062931091-91d1c8f4-m2-robot-bravo"
+      "run-1785073909711-c8dcb141-m1-robot-alpha",
+      "run-1785073909711-c8dcb141-m1-robot-bravo",
+      "run-1785073909711-c8dcb141-m1-robot-charlie",
+      "run-1785073909711-c8dcb141-m2-robot-bravo"
     ],
     "note": "acceptance evidence includes only telemetry from this invocation"
   },

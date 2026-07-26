@@ -8,6 +8,7 @@ mix simulated records into a real held-out metric.
 from __future__ import annotations
 
 import csv
+import io
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,6 +23,25 @@ EXPORT_SCHEMA_VERSION = 1
 COLUMNS = ("event_id", "robot_id", "mission_id", "seq", "observed_ms", "received_ms", "provenance",
            "source_mode", "zone", "label", "confidence", "vibration_score", "vibration_risk",
            "accepted", "health_state", "channels")
+CSV_FORMULA_PREFIXES = ("=", "+", "-", "@")
+
+
+def _safe_csv_cell(value: Any) -> Any:
+    """Keep spreadsheet software from evaluating exported database text as a formula."""
+    if isinstance(value, str) and value.lstrip().startswith(CSV_FORMULA_PREFIXES):
+        return f"'{value}"
+    return value
+
+
+def csv_bytes(rows: Sequence[dict[str, Any]], columns: Sequence[str]) -> bytes:
+    """RFC 4180 CSV with an Excel-compatible UTF-8 BOM and fixed column order."""
+    handle = io.StringIO(newline="")
+    writer = csv.DictWriter(handle, fieldnames=list(columns), lineterminator="\r\n",
+                            extrasaction="ignore")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({column: _safe_csv_cell(row.get(column)) for column in columns})
+    return b"\xef\xbb\xbf" + handle.getvalue().encode("utf-8")
 
 
 @dataclass(frozen=True)
@@ -85,12 +105,12 @@ def _write_rows(path: Path, rows: Sequence[dict[str, Any]], fmt: str) -> None:
             for row in rows:
                 handle.write(json.dumps(row, default=str) + "\n")
         return
-    with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(COLUMNS))
-        writer.writeheader()
-        for row in rows:
-            writer.writerow({key: (json.dumps(row[key], default=str) if key == "channels" else row.get(key))
-                             for key in COLUMNS})
+    csv_rows = [
+        {key: (json.dumps(row[key], default=str) if key == "channels" else row.get(key))
+         for key in COLUMNS}
+        for row in rows
+    ]
+    path.write_bytes(csv_bytes(csv_rows, COLUMNS))
 
 
 def export(destination: Path, *, fmt: str = "jsonl", filters: ExportFilters | None = None,

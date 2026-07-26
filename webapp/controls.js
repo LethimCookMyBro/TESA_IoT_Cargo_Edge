@@ -18,6 +18,13 @@ export const COMMANDS = {
 
 export const CARGO_TYPES = ['standard', 'fragile'];
 export const ZONES = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+export const CAMERA_MODES = ['overview', 'follow', 'robot-pov'];
+export const ROUTE_WIDTHS = Object.freeze({
+  lane: 0.95,
+  travelled: 1.3,
+  remaining: 1.65,
+  current: 2.2,
+});
 
 /** Verified leaf paths of `cargoshield.state.v1`; see visual-flow/CARGOSHIELD_SENSOR_STUDIO_FLOW_BUILD.md. */
 export const DISPLAY_PATHS = {

@@ -600,3 +600,135 @@ MQTT topics, `cargoshield.state.v1` / `.v2` payloads, every command action and i
 and all ten pre-existing History API endpoints are byte-for-byte unchanged. The copilot routes are
 additive. `tests/test_webapp_controls.py` still feeds every payload the page can emit into
 `CargoMqttService.handle_command` and asserts the engine accepts it.
+
+---
+
+## 17. Addendum — Pagination, CSV, camera, and accessibility verification
+
+This section records the 2026-07-26 verification round. It extends the existing implementation
+without changing MQTT topics, Safety Core decisions, or command payloads.
+
+### 17.1 Baseline measured before this round
+
+| Check | Baseline result |
+| --- | --- |
+| `python -m pytest -q` | **141 passed, 139 subtests** in 47.37 s |
+| `python -m compileall -q cargo training scripts tests` | passed |
+| `scripts/smoke_mqtt_flow.py --dataset-demo` | `COMPLETED`, schema `cargoshield.state.v1` |
+| `scripts/demo_e2e_check.py` | **14/14** |
+| `scripts/fleet_scenario.py` | **12/12** |
+| `pip-audit` | no known vulnerabilities |
+
+The baseline browser run exposed intermittent MQTT/reconnect failures and captured 12 before
+screenshots. The presentation defects were small control targets and type, route phases with
+insufficient width distinction, no camera-mode controls, Fleet history without pagination or CSV,
+advanced data tools appearing before the assistant/history flow, and nested vertical scrolling.
+
+### 17.2 Design system and scoped implementation
+
+The existing dark CargoShield palette and components were retained. The round added only reusable
+CSS tokens already supported by the browser: 16 px base type, 44 px minimum interactive targets,
+consistent spacing, visible `:focus-visible`, responsive wrapping, and document-level vertical
+scrolling. Native HTML/CSS/JS, Python stdlib `csv`, and the repository's existing Three.js were
+enough; **no dependency or third-party asset was added**. The CSV button uses the native Unicode
+character `↓`, so no icon attribution or license entry is required.
+
+### 17.3 Mission Protection before and after
+
+The before set covers `IDLE`, `MOVING`, `SLOW_DOWN`, `HOLD_UNCERTAIN`, `SAFE_STOPPED`, `COMPLETED`,
+1440×900, no-WebGL, and reduced motion. The after set covers those states plus `READY`, Overview,
+Follow, Robot POV, 1280×720, 1440×900, and an effective 200% zoom viewport. The route is now built
+from separate plane geometry with distinct widths for lane, travelled, remaining, and current
+segments; this works on WebGL implementations where `LineBasicMaterial.linewidth` is ignored.
+No-WebGL retains a readable fallback and disables unavailable camera controls. Reduced-motion
+camera changes are immediate rather than animated.
+
+### 17.4 Fleet Guardian before and after
+
+History is ordered as Safety Events → Mission History → Maintenance Assistant → collapsed Data
+Tools. After evidence includes overview at 1920×1080, 1440×900, and 1280×720; safety-event pages 1
+and 2; filtered events; mission pagination; Maintenance Assistant; collapsed tools; CSV success;
+empty state; and History API unavailable. The page no longer creates a nested vertical scroll
+region or horizontal overflow at the tested targets.
+
+### 17.5 Pagination behavior
+
+- Events and missions have independent Previous/Next state and a fixed maximum of 20 rows.
+- Page 1 disables Previous; the last page disables Next; invalid, zero, negative, decimal,
+  duplicate, and out-of-range pagination inputs are rejected.
+- Event sorting is stable by `observed_ms DESC, event_id DESC`; mission sorting is stable by
+  `started_ms DESC, mission_id DESC`.
+- Changing an event filter resets only the event page to 1; mission pagination is preserved.
+- Browser tests exercised pages 1, 2, and 3 and verified ranges and edge states against real DOM
+  rows, not only source strings.
+
+### 17.6 CSV contract and security
+
+`/api/events.csv` and `/api/missions.csv` export the active filters independently of the current
+20-row page, with fixed columns, ISO-8601 UTC times, CRLF records, UTF-8 BOM, and RFC 4180 quoting.
+Cells whose trimmed value starts with `=`, `+`, `-`, or `@` receive a leading apostrophe to prevent
+formula execution. Exports are capped at 5,000 rows and return a header for an empty result.
+
+Playwright performed a real browser download and checked the active filter and BOM. Microsoft
+Excel 16.0 opened
+`reports/downloads/cargoshield_safety_events_20260726T141348Z.csv` as 351 rows including the header
+and 15 columns. A temporary contract file additionally proved Thai text, commas, and embedded
+newlines survived; the injected `=1+1` opened as the text `'=1+1` with `HasFormula=false`. The
+temporary file was removed after verification.
+
+### 17.7 Three.js and performance
+
+Overview, Follow, and Robot POV were exercised through the UI. The selected mode is exposed through
+the stage dataset and ARIA pressed state. Headed WebGL used an NVIDIA GeForce RTX 4050; observed
+final runs were 172–181 fps, with the latest five samples all 180 fps. These are workstation
+rendering figures, **not board inference or physical-robot performance**.
+
+### 17.8 Accessibility and browser verification
+
+Playwright verified keyboard Tab/Enter navigation, a visible focus ring of at least 2 px, 44 px
+targets, 1920/1440/1280/1024/960 responsive widths, no horizontal overflow, explicit loading,
+empty, disconnected, and error states, reduced motion, and no-WebGL. The final headed run recorded
+zero application console errors and zero failed transports. The 200% zoom check used an effective
+960×540 CSS viewport for a 1920×1080 display and found zero horizontal overflow and no summary/
+control overlap.
+
+All **42 current evidence images** (12 before and 30 after) were opened and visually inspected.
+The latest three Playwright images overwritten by the final suite (`Fleet_CSV_success_mock`,
+`Fleet_empty_state`, and `Fleet_API_unavailable`) were opened again individually after that run.
+
+### 17.9 Final verification
+
+| Check | Final result |
+| --- | --- |
+| `python -m pytest -q` | **165 passed, 169 subtests** in 56.55 s |
+| `python -m compileall -q cargo training scripts tests` | passed |
+| Node syntax checks for `app.js`, `controls.js`, `fleet.js`, `scene.js` | passed |
+| `scripts/smoke_mqtt_flow.py --dataset-demo` | `COMPLETED`, `cargoshield.state.v1` |
+| `scripts/demo_e2e_check.py` | **14/14** |
+| `scripts/fleet_scenario.py` | **12/12**, 97 rows, 0 dropped |
+| `scripts/webapp_ui_check.py` | passed; zero console errors |
+| `pip-audit` | no known vulnerabilities |
+| `git diff --check` | passed |
+
+The simulator historian latency was p50 0.291 ms and p95 0.4875 ms. This is a local software
+scenario only. Board latency, sensors, localization/SLAM, physical motion, and real route
+readability on robot hardware are **ยังไม่พิสูจน์**.
+
+### 17.10 Contract, cleanup, and evidence boundaries
+
+`cargo/contracts.py`, the Safety decision engine, existing MQTT topics, existing state schemas, and
+existing command payloads were not changed. The browser publish path now checks
+`client.connected`, and its bounded retry window is 1.6 s so a reconnect can finish before a
+command is abandoned. Regression tests feed the unchanged command payloads through the real
+handler.
+
+No selector, class, function, or dynamic template family was removed in this round. In particular,
+`tone-*`, `v-*`, and `glyph-*` remain untouched. `.gitignore` and package manifests were not
+changed. No commit or push was made. Evidence lives in:
+
+- `reports/screenshots/before/`
+- `reports/screenshots/after/`
+- `reports/webapp_ui_evidence.json`
+- `reports/demo_e2e_evidence.json`
+- `reports/fleet_scenario_evidence.json`
+- `reports/downloads/cargoshield_safety_events_20260726T141348Z.csv`

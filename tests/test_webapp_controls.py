@@ -5,6 +5,7 @@ drift apart silently. Skipped when node is unavailable.
 """
 
 import json
+import re
 import shutil
 import subprocess
 import unittest
@@ -73,6 +74,18 @@ class WebappControlsTests(unittest.TestCase):
     def test_operator_commands_wait_for_broker_ack(self):
         source = (WEBAPP / "app.js").read_text(encoding="utf-8")
         self.assertIn("client.publish(topic.command, payload, { qos: 1 })", source)
+
+    def test_operator_commands_do_not_publish_into_a_closing_transport(self):
+        source = (WEBAPP / "app.js").read_text(encoding="utf-8")
+        connected_guard = source.index("if (!client.connected)")
+        publish = source.index("client.publish(topic.command, payload, { qos: 1 })")
+        self.assertLess(connected_guard, publish)
+
+    def test_operator_command_retry_window_covers_a_full_reconnect(self):
+        source = (WEBAPP / "app.js").read_text(encoding="utf-8")
+        attempts = int(re.search(r"COMMAND_ATTEMPTS = (\d+)", source).group(1))
+        retry_ms = int(re.search(r"COMMAND_RETRY_MS = (\d+)", source).group(1))
+        self.assertGreaterEqual((attempts - 1) * retry_ms, 1_600)
 
     def test_operator_ui_labels_recorded_input_as_dataset_replay(self):
         index = (WEBAPP / "index.html").read_text(encoding="utf-8")

@@ -26,7 +26,8 @@ ACTIONS = sorted(STATUS_BY_ACTION)
 
 EXTRACT = """
 import { OBSTACLE_POLICY, ZONE_POSITIONS, DEMO_EDGES, SURFACE_TINTS, obstacleTone, motion,
-  routePosition, PROTECTION_STATES, protectionState, actionTone, explain } from './controls.js';
+  routePosition, PROTECTION_STATES, protectionState, actionTone, explain, CAMERA_MODES,
+  ROUTE_WIDTHS } from './controls.js';
 const statuses = %s;
 const actions = %s;
 const window = (extra) => ({
@@ -66,6 +67,8 @@ console.log(JSON.stringify({
             decision: { action: 'HOLD_UNCERTAIN', speed_ratio: 0, reason: 'low confidence' } },
   })),
   explain_empty: explain({ status: 'IDLE' }),
+  camera_modes: CAMERA_MODES,
+  route_widths: ROUTE_WIDTHS,
 }));
 """ % (json.dumps(STATUSES), json.dumps(ACTIONS))
 
@@ -192,6 +195,21 @@ class WebappVisualContractTests(unittest.TestCase):
 
         # With no inference published there is nothing to explain, and nothing is invented.
         self.assertEqual(self.contract["explain_empty"], [])
+
+    def test_camera_modes_are_ui_only_and_route_phases_have_distinct_widths(self):
+        self.assertEqual(self.contract["camera_modes"], ["overview", "follow", "robot-pov"])
+        widths = self.contract["route_widths"]
+        self.assertGreater(widths["current"], widths["remaining"])
+        self.assertGreater(widths["remaining"], widths["travelled"])
+        self.assertGreater(widths["travelled"], widths["lane"])
+
+        index = (WEBAPP / "index.html").read_text(encoding="utf-8")
+        scene = (WEBAPP / "scene.js").read_text(encoding="utf-8")
+        for mode in self.contract["camera_modes"]:
+            self.assertIn(f'data-camera-mode="{mode}"', index)
+        self.assertNotIn('data-cmd="overview"', index)
+        self.assertIn("setCameraMode", scene)
+        self.assertIn("reducedMotion ? 1", scene)
 
 
 if __name__ == "__main__":
