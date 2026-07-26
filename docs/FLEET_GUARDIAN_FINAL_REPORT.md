@@ -16,7 +16,7 @@ The single-robot CargoShield demo is now a multi-robot Fleet Guardian prototype:
 - a narrow read-only history API, with no browser-to-database path anywhere;
 - a one-command three-robot scenario that also proves database-outage survival and per-robot
   isolation;
-- two coherent UI surfaces — the existing Thai-first Three.js Live Operations console, plus a new
+- two coherent UI surfaces — the existing Thai-first Three.js Dataset Replay console, plus a new
   Fleet Intelligence dashboard;
 - the previously unused 1 824-window validation split now selects the confidence-rejection
   threshold, and that choice measurably improves held-out behaviour;
@@ -34,7 +34,7 @@ Two things the goal asked for that are **not** delivered, and why:
 ## 2. Architecture and data flow
 
 ```
-                        ┌──────────────────────────── real-time, in memory ─────────────────────────────┐
+                        ┌──────────────────── synchronous safety path, in memory ───────────────────────┐
  robot telemetry        │                                                                               │
  cargoshield/{id}/      │   contracts.validate_envelope ──► SequenceGate ──► HealthMonitor (per robot)   │
    telemetry  ──────────┼──►  (trust boundary)             (dup / order)    (11 deterministic checks)    │
@@ -52,7 +52,7 @@ Two things the goal asked for that are **not** delivered, and why:
    cargoshield/{id}/events (NOT retained)    → batch writer thread → PostgreSQL       (retained)
                     │                                       │
                     ▼                                       ▼
-        Live Operations (MQTT/WS)              read-only history API :8099 ──► Fleet Intelligence
+        Dataset Replay (MQTT/WS)               read-only history API :8099 ──► Fleet Intelligence
                                                             │
                                                             ▼
                                         MaintenanceContext (SELECT-only role) ──► future copilot
@@ -60,9 +60,9 @@ Two things the goal asked for that are **not** delivered, and why:
 
 The three rules this diagram exists to make checkable:
 
-1. Nothing below the dashed real-time box can block anything inside it. `FleetGuardian.sink` is
+1. Nothing below the dashed safety-path box can block anything inside it. `FleetGuardian.sink` is
    called after the decision is made, and a sink that raises is counted and ignored.
-2. The browser never reaches PostgreSQL. It has two inputs: MQTT for live state, HTTP GET for
+2. The browser never reaches PostgreSQL. It has two inputs: MQTT for current retained state, HTTP GET for
    history.
 3. Commands travel only on `cargoshield/{robot_id}/command`. The history API is GET-only and the
    maintenance context has no transport at all.
@@ -267,12 +267,12 @@ PostgreSQL 16 in Docker on `127.0.0.1:5433`, one `cargo.mqtt_service --device-id
 
 | # | Command | Result |
 | --- | --- | --- |
-| 1 | `python -m pytest -q` | **PASSED — 129 passed, 111 subtests, 3 consecutive runs** (43.91 s / 45.19 s / 41.91 s). Baseline was 58 passed |
-| 2 | `python -m compileall -q cargo training scripts tests` | **PASSED** — exit 0, 3 consecutive runs |
-| 3 | `python scripts\smoke_mqtt_flow.py --dataset-demo` | **PASSED** — 3 consecutive runs |
-| 4 | `python scripts\demo_e2e_check.py` | **PASSED** — all 14 checks, 3 consecutive runs (was flaky at baseline) |
-| 5 | `python scripts\fleet_scenario.py` | **PASSED** — all 12 checks, 3 consecutive runs; every run used a unique `run_id` and current-run-only database query |
-| 6 | `python scripts\webapp_ui_check.py --url "http://127.0.0.1:8080/?device=ui-verify"` | **PASSED** — 3 consecutive runs, **0 console errors**, 12 screenshots, both surfaces |
+| 1 | `python -m pytest -q` | **PASSED — 131 passed, 111 subtests** (40.02 s). Baseline was 58 passed |
+| 2 | `python -m compileall -q cargo training scripts tests` | **PASSED** — exit 0 |
+| 3 | `python scripts\smoke_mqtt_flow.py --dataset-demo` | **PASSED** — status `COMPLETED` |
+| 4 | `python scripts\demo_e2e_check.py` | **PASSED** — all 14 checks (was flaky at baseline) |
+| 5 | `python scripts\fleet_scenario.py` | **PASSED** — all 12 checks; unique `run_id` and current-run-only database query |
+| 6 | `python scripts\webapp_ui_check.py --url "http://127.0.0.1:8080/?device=ui-verify"` | **PASSED** — **0 console errors**, 12 screenshots, both surfaces |
 | 7 | `python -m cargo.db` | **PASSED** — migration applied once, second run a no-op |
 | 8 | `python -m training.select_confidence` | **PASSED** — threshold 0.55 written |
 | 9 | `python -m training.evaluate_baseline` | **PASSED** — §6 |
@@ -360,7 +360,7 @@ Sensor-ingest-to-safety-decision, 68 samples across 3 robots, from `reports/flee
 
 | p50 | p95 | max | mean |
 | --- | --- | --- | --- |
-| **0.2764 ms** | **0.5975 ms** | 1.9027 ms | 0.3335 ms |
+| **0.1574 ms** | **0.3140 ms** | 0.8507 ms | 0.1844 ms |
 
 Persistence does not materially change it: `test_a_slow_sink_does_not_slow_the_decision_materially`
 runs 200 samples through a guardian whose sink is a real historian queue and asserts p95 < 5 ms;
@@ -377,7 +377,7 @@ writer committed 93 records; all healthy writer phases committed 174 records tot
 table totals remain visible for operations but are explicitly excluded from acceptance.
 
 **Limitations of these numbers.** Single workstation, one broker, three robots, ~50 ms nominal
-sample interval, ~70 decisions per measured run. The `max` of 1.9027 ms is a scheduling outlier, not a
+sample interval, ~70 decisions per measured run. The `max` of 0.8507 ms is a scheduling outlier, not a
 worst case under load. No sustained-throughput or many-robot test was run, so no throughput ceiling
 is claimed. Windows `sleep()` overshoot means the simulator's real cadence is looser than nominal —
 which is why `observed_ms` is stamped from the wall clock.
@@ -436,9 +436,9 @@ a static server for `webapp/`, then open `index.html` and `fleet.html`.
 1. Three simulated robots ingest concurrently through versioned, robot-scoped MQTT contracts, with
    per-robot isolation proven by test and by scenario evidence.
 2. A deterministic Python Safety Core makes every Stop/Slow/Hold/Move decision, measured at
-   p50 0.1586 ms / p95 0.4404 ms ingest-to-decision **in the local simulator**.
-3. Robot safety survives a PostgreSQL outage; 24 decisions were made with the database gone, and
-   144 dropped history records were counted rather than lost silently.
+   p50 0.1574 ms / p95 0.3140 ms ingest-to-decision **in the local simulator**.
+3. Robot safety survives a PostgreSQL outage; 27 decisions were made with the database gone, and
+   61 dropped history records were counted rather than lost silently.
 4. Surface classification is a real scikit-learn model over real stored CareerCon windows:
    macro F1 0.5156 on a group-disjoint held-out split — comparable to the source paper's own
    XGBoost result of 59.5 % accuracy on the same dataset.

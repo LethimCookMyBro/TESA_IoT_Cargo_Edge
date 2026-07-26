@@ -185,7 +185,7 @@ Obstacle distance = 20
 
 ### Curated dataset demonstration sequence
 
-รอบสาธิตใช้ชุด index คงที่ 10 หน้าต่างจากข้อมูลจริงในเครื่อง (`cargo.mqtt_service.DEMO_SEQUENCE`) เว้นระยะหน้าต่างละ `REPLAY_INTERVAL_S = 1.0` วินาที รวมประมาณ 10 วินาทีต่อรอบ ปรับจังหวะได้ด้วย `--interval` โดยไม่ต้องแก้ว่าใช้ข้อมูลหน้าต่างไหน
+รอบสาธิตใช้ชุด index คงที่ 10 หน้าต่างจาก validation split ที่ไม่อยู่ใน train split (`cargo.mqtt_service.DEMO_SEQUENCE`) เว้นระยะหน้าต่างละ `REPLAY_INTERVAL_S = 1.0` วินาที รวมประมาณ 10 วินาทีต่อรอบ ปรับจังหวะได้ด้วย `--interval` โดยไม่ต้องแก้ว่าใช้ข้อมูลหน้าต่างไหน ชุดนี้เป็น Dataset Replay ไม่ใช่การวัดเซนเซอร์สด และไม่ใช้แทนผลประเมินจาก test split
 
 ชุดนี้ถูกเลือกให้ครอบคลุมทั้ง vibration risk `low`, `medium`, `high` และทั้งกรณีที่โมเดลมั่นใจและไม่มั่นใจ **ค่าที่แสดงทุกตัวเป็นผลจริงของโมเดลบนหน้าต่างจริง ไม่มีการปลอมค่า confidence หรือผลทำนาย และไม่มีการลด `minimum_confidence`**
 
@@ -266,7 +266,7 @@ speed_ratio = 0.0
 - BLE เดิมไม่ได้ถูกแก้
 - Firmware, VSIX, HEX และ Flasher ไม่ได้ถูกแก้
 - State ปกติ retain แล้ว Flow ที่ subscribe ทีหลังจึงเห็นสถานะทันที
-- Obstacle controls ตอบสนองสดตาม contract ด้านบนแล้ว
+- Obstacle controls ตอบสนองทันทีต่อ input จำลองตาม contract ด้านบนแล้ว
 - Replay เป็นชุดสาธิต 10 หน้าต่าง ~10 วินาที แสดงครบทั้ง MOVE, HOLD_UNCERTAIN และความต่างของ cargo policy
 - ตรวจ end-to-end ผ่าน broker จริงด้วย `scripts/demo_e2e_check.py` เก็บหลักฐานไว้ที่ `reports/demo_e2e_evidence.json` (14/14)
 - **3D Operator Console ใน `webapp/` เสร็จแล้ว** ฉากคลังสินค้า Three.js แบบ procedural, โซน `A1..C2` จาก `DEMO_GRAPH` จริง, เส้นทางจาก `route.nodes`, heat overlay จาก `risk_map`, AGV พร้อมล้อและกล่องสินค้า (standard/fragile ต่างกันชัดเจน), obstacle marker ตามระยะจริง, orbit/pan/zoom + Reset camera
@@ -275,7 +275,7 @@ speed_ratio = 0.0
 - ผลทดสอบล่าสุด:
 
 ```text
-58 passed
+131 passed, 111 subtests
 ```
 
 ---
@@ -422,7 +422,7 @@ visual-flow/cargoshield-edge.trn-flow-preset.json
 
 ## สิ่งที่ยังเป็น Prototype
 
-- Obstacle Distance ยังมาจาก Slider หรือคำสั่งจำลอง (ตัว logic ตอบสนองสดแล้ว แต่ตัวเลขระยะยังเป็น input จำลอง)
+- Obstacle Distance ยังมาจาก Slider หรือคำสั่งจำลอง (ตัว logic ตอบสนองทันที แต่ตัวเลขระยะยังเป็น input จำลอง)
 - ยังไม่มี ToF หรือ Ultrasonic Sensor จริง
 - ลำดับ 10 หน้าต่างในรอบสาธิตเป็น curated sequence ที่เลือกไว้ล่วงหน้า ไม่ใช่การสุ่มหรือการวิ่งจริงบนพื้น
 - Zone ที่เดินระหว่างสาธิตมาจาก route ที่วางไว้ตอนเริ่ม ไม่ได้มาจากตำแหน่งจริงของหุ่นยนต์
@@ -459,7 +459,7 @@ CargoShield Edge ไม่ได้เป็นเพียงระบบตร
 
 ## คำอธิบายแบบสั้น
 
-> CargoShield Edge คือระบบ AI สำหรับหุ่นยนต์ขนส่งสินค้า ซึ่งใช้ข้อมูลจาก IMU เพื่อจำแนกพื้นผิวและประเมินแรงสั่นสะเทือน จากนั้นปรับความเร็วและเส้นทางตามความเปราะบางของสินค้า พร้อมระบบชะลอ หยุดรอ และ Safe Stop เมื่อพบความเสี่ยง โดยเผยแพร่สถานะทั้งหมดผ่าน MQTT แบบเรียลไทม์ เพื่อให้ Dashboard และ Digital Twin ใน Sensor Studio นำไปแสดงผล
+> CargoShield Edge คือ Prototype ระบบ AI สำหรับหุ่นยนต์ขนส่งสินค้า ปัจจุบันใช้ IMU windows ที่บันทึกไว้จาก validation split มา Replay เข้าโมเดล แล้วเผยแพร่ผลของแต่ละ window ผ่าน MQTT ขณะ Replay เพื่อให้ Dashboard และ Digital Twin แสดงการตัดสินใจ ระบบยังไม่ได้วัดเซนเซอร์สดจากหุ่นยนต์จริง
 
 Dashboard และ Digital Twin เป็นเป้าหมายที่ยังต้องสร้าง ตอนนี้มีเฉพาะฝั่ง MQTT ที่ส่ง State ครบทุก Path แล้ว
 
@@ -476,10 +476,10 @@ Route / Risk Map         : ทำงานแล้ว
 Collision Logic          : ทำงานแล้ว
 HOLDING / SAFE_STOP      : ทำงานแล้ว
 MQTT Bridge              : ทำงานแล้ว
-Obstacle Contract        : ทำงานแล้ว (ตอบสนองสด)
+Obstacle Contract        : ทำงานแล้ว (ตอบสนองทันทีต่อ input จำลอง)
 Demo Replay              : ทำงานแล้ว (10 หน้าต่าง ~10 วินาที)
 End-to-End MQTT          : ตรวจผ่านแล้ว 14/14 (reports/demo_e2e_evidence.json)
-Automated Tests          : 58 passed
+Automated Tests          : 131 passed, 111 subtests
 3D Operator Console      : ทำงานแล้ว ตรวจในเบราว์เซอร์จริงแล้ว (reports/webapp_ui_evidence.json)
 Sensor Studio Dashboard  : ยังต้องสร้างด้วยมือ (เป้าหมายถัดไป)
 Visual Flow Export       : ยังไม่มี ต้องคลิก Export ใน Studio (เป้าหมายถัดไป)

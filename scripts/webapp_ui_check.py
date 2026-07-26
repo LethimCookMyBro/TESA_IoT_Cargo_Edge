@@ -205,6 +205,11 @@ def main() -> None:
             "age": page.inner_text("#age"),
             "rendered_before_any_click": True,
         }
+        evidence["provenance_ui"] = {
+            "source": page.inner_text("#v-source"),
+            "progress_label": page.inner_text("#progress-label"),
+            "start_button": page.inner_text('button[data-cmd="start"]'),
+        }
         evidence["webgl"] = {
             "canvas_visible": page.is_visible("#stage"),
             "fallback_shown": page.is_visible("#stage-fallback"),
@@ -238,6 +243,9 @@ def main() -> None:
             # Without WebGL the panels must carry the demo on their own, and neither variant may error.
             evidence["passed"] = (
                 evidence["passed"]
+                and "ไม่ใช่การวัดสด" in evidence["provenance_ui"]["source"]
+                and "replay" in evidence["provenance_ui"]["progress_label"].casefold()
+                and "dataset replay" in evidence["provenance_ui"]["start_button"].casefold()
                 and fallbacks["no_webgl"]["fallback_shown"]
                 and fallbacks["no_webgl"]["controls_usable"]
                 and not fallbacks["no_webgl"]["console_errors"]

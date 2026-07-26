@@ -35,7 +35,7 @@
     },
     {
       "step": "clear obstacle",
-      "status": "READY",
+      "status": "HOLDING",
       "screenshot": "reports/screenshots/READY.png"
     },
     {
@@ -69,6 +69,11 @@
     "age": "\u0e40\u0e21\u0e37\u0e48\u0e2d\u0e2a\u0e31\u0e01\u0e04\u0e23\u0e39\u0e48",
     "rendered_before_any_click": true
   },
+  "provenance_ui": {
+    "source": "DATASET REPLAY \u00b7 validation split \u0e41\u0e22\u0e01\u0e08\u0e32\u0e01 train/test \u00b7 \u0e44\u0e21\u0e48\u0e43\u0e0a\u0e48\u0e01\u0e32\u0e23\u0e27\u0e31\u0e14\u0e2a\u0e14",
+    "progress_label": "\u0e04\u0e27\u0e32\u0e21\u0e04\u0e37\u0e1a\u0e2b\u0e19\u0e49\u0e32\u0e01\u0e32\u0e23 REPLAY",
+    "start_button": "\u0e40\u0e23\u0e34\u0e48\u0e21 Dataset Replay"
+  },
   "webgl": {
     "canvas_visible": true,
     "fallback_shown": false,
@@ -86,16 +91,16 @@
   },
   "after_clear": {
     "obstacle": "N/A",
-    "status": "READY",
-    "confidence_of_last_window": "0.742",
-    "action": "MOVE"
+    "status": "HOLDING",
+    "confidence_of_last_window": "0.450",
+    "action": "HOLD_UNCERTAIN"
   },
   "cargo_switch": {
     "fragile": "\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e40\u0e1b\u0e23\u0e32\u0e30\u0e1a\u0e32\u0e07",
     "screenshot": "reports/screenshots/FRAGILE_cargo.png"
   },
   "route_switch": {
-    "nodes": "A2 \u2192 B2 \u2192 C2",
+    "nodes": "A2 \u2192 A1 \u2192 B1 \u2192 C1",
     "policy": "stability-first; demo distance and learned zone-risk costs"
   },
   "laptop_viewport": {
@@ -103,7 +108,7 @@
     "horizontal_overflow_px": 0,
     "canvas_size": [
       940,
-      789
+      723
     ],
     "screenshot": "reports/screenshots/READY_laptop_1440x900.png"
   },
@@ -153,7 +158,7 @@
     "simulated_notice_visible": true,
     "zone_rows": 4,
     "event_rows": 50,
-    "mission_rows": 30,
+    "mission_rows": 38,
     "series_charts": 5,
     "export_command": ".\\.venv\\Scripts\\python.exe -m cargo.export --format jsonl",
     "first_tab_stop": "skip-link",

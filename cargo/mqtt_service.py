@@ -21,12 +21,10 @@ REPLAY_INTERVAL_S = 1.0
 # How long a new Start waits for a finished run's thread to exit before reporting a conflict.
 REPLAY_HANDOVER_TIMEOUT_S = 2.0
 
-# Curated dataset demonstration sequence, not an evaluation result: fixed indices into the
-# local CareerCon windows, chosen so one run exercises every low/medium/high vibration band
-# and both the confident and the below-threshold model responses. Predictions, confidences and
-# risk bands stay exactly what the trained model returns for these real stored windows;
-# held-out metrics come from reports/metrics.json alone.
-DEMO_SEQUENCE = (278, 279, 25, 26, 3, 1, 13, 42, 23, 280)
+# Curated validation-split replay, not an evaluation result: these train-disjoint CareerCon
+# windows exercise every low/medium/high vibration band and both confident and below-threshold
+# responses. The untouched test split remains reserved for metrics in reports/metrics.json.
+DEMO_SEQUENCE = (2460, 526, 2462, 5144, 2175, 1244, 2235, 5733, 2220, 1238)
 
 
 class CargoMqttService:

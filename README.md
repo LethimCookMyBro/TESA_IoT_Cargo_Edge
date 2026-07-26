@@ -2,7 +2,7 @@
 
 Payload-aware service-robot prototype: Edge-AI surface classification from stored IMU windows, a
 deterministic Python Safety Core, multi-robot MQTT contracts, a central PostgreSQL fleet historian,
-and two operator surfaces — a Thai-first Live Operations console and a Fleet Intelligence dashboard.
+and two operator surfaces — a Thai-first Dataset Replay console and a Fleet Intelligence dashboard.
 
 **Every record in this system is `SIMULATED` or `DATASET`.** There is no camera, microphone,
 distance sensor, current sensor, motor driver, localization or SLAM. See
@@ -46,11 +46,12 @@ Start the MQTT broker on `127.0.0.1:1883` (Bitstream Studio's embedded Aedes bro
 .\.venv\Scripts\python.exe -m http.server 8080 --bind 127.0.0.1 --directory webapp
 ```
 
-- Live Operations: <http://127.0.0.1:8080/index.html>
+- Dataset Replay Operations: <http://127.0.0.1:8080/index.html>
 - Fleet Intelligence: <http://127.0.0.1:8080/fleet.html>
 
 Publishing `{"action":"start"}` to `cargoshield/cargo-robot-01/command` replays a curated
-ten-window dataset sequence. A safe stop latches until `manual_resume`.
+ten-window sequence from the train-disjoint validation split. This is streaming replay, not live
+sensor measurement and not a held-out metric. A safe stop latches until `manual_resume`.
 
 ## The whole fleet demo in one command
 

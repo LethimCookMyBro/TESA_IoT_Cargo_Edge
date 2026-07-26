@@ -1,6 +1,7 @@
 # Known limitations
 
-- Dataset windows are from another physical platform; Dataset Demo Mode is not board proof.
+- Dataset Replay uses train-disjoint validation windows from another physical platform. It is
+  neither live measurement nor board proof; the test split remains reserved for reported metrics.
 - BMI270 needs calibration plus matching 128-window collection before inference can be enabled.
 - Obstacle distance, named zone, and robot movement are simulated demo inputs.
 - No SLAM, safety certification, measured board inference time, or Ethos-U55 deployment is claimed.

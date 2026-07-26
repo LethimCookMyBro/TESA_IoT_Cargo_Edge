@@ -28,12 +28,12 @@ from .sources import DatasetReplaySource
 
 HEALTHY, HIGH_VIBRATION, FAULTY = "healthy", "high_vibration", "faulty"
 
-# Windows chosen so each profile exercises a different part of the model's response. They are
-# indices into the stored dataset, not results.
+# Train-disjoint validation windows chosen so each profile exercises a different part of the
+# model's response. They drive a demo, never the held-out test metrics.
 PROFILE_WINDOWS = {
-    HEALTHY: (278, 279, 25, 26, 3),
-    HIGH_VIBRATION: (1, 13, 42, 23, 280),
-    FAULTY: (278, 25, 3, 42, 280),
+    HEALTHY: (2460, 526, 2462, 5144, 2175),
+    HIGH_VIBRATION: (1244, 2235, 5733, 2220, 1238),
+    FAULTY: (2460, 2462, 5144, 2220, 1238),
 }
 
 GRAVITY_MS2 = 9.81

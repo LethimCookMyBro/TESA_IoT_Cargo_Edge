@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CargoShield · ศูนย์ควบคุมหุ่นยนต์ 3 มิติ</title>
+<title>CargoShield · ศูนย์สาธิต Dataset Replay 3 มิติ</title>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./styles.css">
 <script type="importmap">
@@ -20,12 +20,12 @@
     </svg>
     <div>
       <h1>CargoShield</h1>
-      <p class="brand-sub">ศูนย์ควบคุมหุ่นยนต์ 3 มิติ</p>
+      <p class="brand-sub">ศูนย์สาธิต Dataset Replay 3 มิติ</p>
     </div>
   </div>
 
   <nav class="nav" aria-label="สลับหน้าจอ">
-    <a href="./index.html" aria-current="page">ปฏิบัติการสด (Live Operations)</a>
+    <a href="./index.html" aria-current="page">ปฏิบัติการเดโม (Dataset Replay)</a>
     <a href="./fleet.html">วิเคราะห์กองหุ่นยนต์ (Fleet Intelligence)</a>
   </nav>
 
@@ -43,7 +43,7 @@
       <span class="stat-value"><strong id="status" class="tone-idle" role="status" aria-live="polite">—</strong></span>
     </div>
     <div class="stat">
-      <span class="stat-key">สถานะล่าสุด</span>
+      <span class="stat-key">อัปเดตสถานะ MQTT ล่าสุด</span>
       <span class="stat-value" id="age">ยังไม่มีข้อมูล</span>
     </div>
   </div>
@@ -66,7 +66,7 @@
       <li><i class="swatch" style="--swatch:#ef4444"></i>เขตหยุดปลอดภัย</li>
     </ul>
 
-    <p class="stage-note">ภาพจำลองเท่านั้น — การตัดสินใจทั้งหมดมาจาก Python Engine</p>
+    <p class="stage-note">ภาพจาก Dataset Replay — ไม่ใช่ตำแหน่งหรือการวัดจากหุ่นยนต์จริง การตัดสินใจทั้งหมดมาจาก Python Engine</p>
     <div id="stage-fallback" class="stage-fallback" hidden role="alert">
       <strong>เบราว์เซอร์นี้ไม่รองรับ WebGL</strong>
       <span>ส่วนควบคุมและข้อมูลสถานะยังใช้งานได้ตามปกติ</span>
@@ -78,7 +78,7 @@
     <section class="panel">
       <h2>ควบคุมภารกิจ</h2>
       <div class="btn-row">
-        <button type="button" data-cmd="start" class="primary">เริ่มภารกิจ</button>
+        <button type="button" data-cmd="start" class="primary">เริ่ม Dataset Replay</button>
         <button type="button" data-cmd="pause">หยุดชั่วคราว</button>
         <button type="button" data-cmd="manual_resume">ทำงานต่อ / ปลด Safe Stop</button>
         <button type="button" data-cmd="reset" class="danger">รีเซ็ต</button>
@@ -119,15 +119,15 @@
     </section>
 
     <section class="panel">
-      <h2>สถานะภารกิจ</h2>
+      <h2>สถานะภารกิจเดโม</h2>
       <dl class="readout">
         <dt>สินค้า</dt><dd id="v-cargo_type">—</dd>
         <dt>โซน</dt><dd id="v-zone">—</dd>
         <dt>สิ่งกีดขวาง</dt><dd id="v-obstacle_distance">—</dd>
-        <dt>แหล่งข้อมูล</dt><dd id="v-source">—</dd>
+        <dt>โหมดข้อมูล</dt><dd id="v-source" class="wrap">—</dd>
       </dl>
       <p class="field">
-        <label for="v-progress">ความคืบหน้า <output id="progress-value" for="v-progress">—</output></label>
+        <label for="v-progress"><span id="progress-label">ความคืบหน้า</span> <output id="progress-value" for="v-progress">—</output></label>
         <progress id="v-progress" max="1" value="0"></progress>
       </p>
     </section>

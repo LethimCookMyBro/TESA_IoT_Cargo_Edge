@@ -139,7 +139,7 @@ class MaintenanceContext:
             " ORDER BY reason LIMIT 20", (robot_id,))
         steps = [
             "Confirm the robot is powered down and physically safe to approach.",
-            "Record the current Safe Stop reason from Live Operations before clearing anything.",
+            "Record the current Safe Stop reason from the operator console before clearing anything.",
         ]
         for fault in faults:
             reason = str(fault["reason"])

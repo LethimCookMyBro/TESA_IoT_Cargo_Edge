@@ -58,7 +58,7 @@ Split the job accordingly:
 
 | Job | Where | Status |
 |---|---|---|
-| Show live mission state | Sensor Studio flow: an MQTT subscriber into display nodes from the enabled `connectivity`/`output` categories | to be built and confirmed in the UI |
+| Show current replay state | Sensor Studio flow: an MQTT subscriber into display nodes from the enabled `connectivity`/`output` categories | to be built and confirmed in the UI |
 | Send operator commands | `webapp/`, a local page using the extension's own bundled Live-Data SDK over MQTT-over-WebSocket | built and driven in a browser; contract covered by `tests/test_webapp_controls.py` |
 | Show the mission in 3D | `webapp/scene.js`, a local Three.js warehouse fed by the same retained state | built and driven in a browser; evidence in `reports/webapp_ui_evidence.json` |
 
@@ -200,7 +200,7 @@ Use the Studio's own Export command and save to `visual-flow/cargoshield-edge.tr
 
 ## Demonstration sequence
 
-1. Publish or wire `{ "action": "start" }`. The service replays the ten-window curated dataset demonstration sequence over about ten seconds, emitting prediction, confidence, vibration risk, decision, route, zone and progress for each window. The run walks `A1 -> C2` and shows `MOVE` at low, medium and high vibration risk plus `HOLD_UNCERTAIN` on the below-threshold windows — every value is the trained model's real output for those stored windows.
+1. Publish or wire `{ "action": "start" }`. The service replays ten curated train-disjoint validation windows over about ten seconds, emitting prediction, confidence, vibration risk, decision, route, zone and replay progress for each window. This is not a live sensor measurement and not a held-out metric. The run walks `A1 -> C2` and shows `MOVE` at low, medium and high vibration risk plus `HOLD_UNCERTAIN` on the below-threshold windows — every value is the trained model's real output for those stored windows.
 2. Choose **Standard**, start, let it finish; then choose **Fragile** and start again. Identical windows return different speed ratios: `1.0 / 0.75 / 0.5` for standard against `0.8 / 0.45 / 0.25` for fragile, with a `stability-first` route reason.
 3. Mid-run send `{ "action": "pause" }`; progress freezes. Send `{ "action": "manual_resume" }` to continue the same run.
 4. Mid-run send `{ "action": "set_obstacle", "distance": 50 }` for `SLOWING`, then `20` for `SAFE_STOPPED`. The safe stop latches and ends that run at the instant it is raised — whether the operator caused it or a replayed window did. `{ "action": "clear_obstacle" }` does **not** release the latch; only `{ "action": "manual_resume" }` does, and the operator then presses **Start** to run again. Progress stays frozen where it stopped, and the mission returns to `READY` rather than claiming `MOVING`, because nothing is stepping windows. Restarting while the obstacle is still inside the stop region latches again instead of driving through it.

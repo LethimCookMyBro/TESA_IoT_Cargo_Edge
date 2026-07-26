@@ -74,6 +74,16 @@ class WebappControlsTests(unittest.TestCase):
         source = (WEBAPP / "app.js").read_text(encoding="utf-8")
         self.assertIn("client.publish(topic.command, payload, { qos: 1 })", source)
 
+    def test_operator_ui_labels_recorded_input_as_dataset_replay(self):
+        index = (WEBAPP / "index.html").read_text(encoding="utf-8")
+        fleet = (WEBAPP / "fleet.html").read_text(encoding="utf-8")
+        app = (WEBAPP / "app.js").read_text(encoding="utf-8")
+        self.assertNotIn("ปฏิบัติการสด", index + fleet)
+        self.assertIn("เริ่ม Dataset Replay", index)
+        self.assertIn('id="progress-label"', index)
+        self.assertIn("ไม่ใช่การวัดสด", app)
+        self.assertIn("ความคืบหน้าการ Replay", app)
+
     def test_every_display_path_exists_in_a_real_state_payload(self):
         client = FakeClient()
         service = CargoMqttService(ROOT, client=client, interval_s=0)

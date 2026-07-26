@@ -44,10 +44,19 @@ function toast(message, bad = false) {
 /* ---------------- controls ---------------- */
 
 const CARGO_LABELS = { standard: 'สินค้าทั่วไป', fragile: 'สินค้าเปราะบาง' };
-const PROVENANCE_LABELS = {
-  dataset: 'ชุดข้อมูลที่บันทึกไว้ ไม่ใช่การวัดสด',
-  simulated: 'ข้อมูลจำลอง',
-  hardware: 'ฮาร์ดแวร์จริง',
+const SOURCE_PRESENTATION = {
+  dataset: {
+    label: 'DATASET REPLAY · validation split แยกจาก train/test · ไม่ใช่การวัดสด',
+    progress: 'ความคืบหน้าการ Replay',
+  },
+  simulated: {
+    label: 'SIMULATION · ข้อมูลสังเคราะห์ · ไม่ใช่การวัดสด',
+    progress: 'ความคืบหน้าสถานการณ์จำลอง',
+  },
+  hardware: {
+    label: 'LIVE HARDWARE · การวัดสดจากอุปกรณ์',
+    progress: 'ความคืบหน้าภารกิจสด',
+  },
 };
 $('cargo').append(...CARGO_TYPES.map((value) => new Option(`${CARGO_LABELS[value]} (${value})`, value)));
 for (const select of [$('pickup'), $('destination')]) {
@@ -226,10 +235,10 @@ function render(state) {
   // The raw enum, kept out of the visible text so the label can be translated freely.
   statusNode.dataset.status = show(status);
   statusNode.dataset.states = String(++statesRendered);
-  // Provenance is stated in the contract's own vocabulary. `dataset` lowercase read as a config
-  // value; DATASET reads as the claim it actually is.
   const source = read(state, 'source');
-  $('v-source').textContent = source ? `${String(source).toUpperCase()} · ${PROVENANCE_LABELS[source] ?? 'ที่มาไม่ระบุ'}` : NA;
+  const presentation = SOURCE_PRESENTATION[source];
+  $('v-source').textContent = presentation?.label ?? (source ? `${String(source).toUpperCase()} · ที่มาไม่ระบุ` : NA);
+  $('progress-label').textContent = presentation?.progress ?? 'ความคืบหน้า';
   $('v-error').textContent = state?.error ?? state?.source_diagnostic ?? 'ไม่มี';
 
   const distance = read(state, 'obstacle_distance');

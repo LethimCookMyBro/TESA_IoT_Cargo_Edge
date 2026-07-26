@@ -4,9 +4,11 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 
 from cargo.mqtt_service import DEMO_SEQUENCE, REPLAY_INTERVAL_S, CargoMqttService
 from cargo.routing import DEMO_GRAPH, choose_route
+from cargo.simulator import PROFILE_WINDOWS
 
 
 class _EmptySource:
@@ -166,6 +168,15 @@ class DemoReplaySequenceTests(unittest.TestCase):
         seconds = len(DEMO_SEQUENCE) * REPLAY_INTERVAL_S
         self.assertGreaterEqual(seconds, 8)
         self.assertLessEqual(seconds, 12)
+
+    def test_runtime_demo_windows_are_validation_only(self):
+        root = Path(__file__).resolve().parents[1]
+        with np.load(root / "models" / "split_indices.npz") as split:
+            runtime = set(DEMO_SEQUENCE)
+            runtime.update(index for windows in PROFILE_WINDOWS.values() for index in windows)
+            self.assertTrue(runtime <= set(split["validation"].tolist()))
+            self.assertTrue(runtime.isdisjoint(set(split["train"].tolist())))
+            self.assertTrue(runtime.isdisjoint(set(split["test"].tolist())))
 
     def test_replay_interval_is_configurable_independently_of_window_count(self):
         root = Path(__file__).resolve().parents[1]
