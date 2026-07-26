@@ -1,8 +1,38 @@
 # Hermes Maintenance Copilot — integration guide
 
-Hermes is **not installed and not integrated**. What exists today is the provider-neutral,
-read-only boundary it would have to sit behind: `cargo/maintenance.py`. Any copilot — Hermes, a
-local model, or none at all — plugs in there or not at all.
+## Status: not connected
+
+Hermes is **not integrated**. What exists today is the provider-neutral, read-only boundary it
+would have to sit behind: `cargo/maintenance.py`, now reachable over GET through
+`cargo/history_api.py` and surfaced in Fleet Guardian as
+**"Maintenance Assistant — Deterministic Read-only Analysis"**.
+
+What was actually checked on this workstation, so the claim is precise:
+
+| Check | Result |
+| --- | --- |
+| Reference to Hermes anywhere in this repository's code or configuration | none — only this document and prose in the READMEs |
+| Hermes endpoint configured for CargoShield | none |
+| Hermes process listening on any port | none |
+| `hermes` executable present on the workstation | yes — `%LOCALAPPDATA%\hermes\hermes-agent\venv\Scripts\hermes.exe` |
+| Proven endpoint or tool contract wired into CargoShield | **no** |
+
+A CLI existing on the same machine is not an integration. `/api/copilot` therefore reports
+`"provider": null`, `"provider_status": "not_connected"`, `"analysis_mode": "deterministic"`, and
+the panel prints **"Hermes provider: Not connected"**. Nothing was installed or configured to make
+that sentence true — it is simply what the repository contains.
+
+**Every answer the panel shows today is deterministic SQL over curated `SELECT` statements. No
+language model is in that path.** Do not present it as an active agent integration.
+
+## What is shipped today
+
+- `GET /api/copilot` — the curated question list, the boundary object, and the provider status.
+- `GET /api/copilot/{question}` — one answer plus its evidence rows.
+- The Fleet Guardian panel renders the questions as buttons. **There is no free-text input**, so the
+  page can only ask what the allowlist permits, and a prompt cannot widen the contract.
+- `history_api.COPILOT_QUESTIONS` is that allowlist: the method behind each question is named in
+  Python, never taken from the URL. `/api/copilot/_query` is a 404, not a method call.
 
 ## What the boundary already enforces
 
@@ -33,11 +63,20 @@ All from curated data, each returning its evidence rows so an answer can cite ra
 7. `exportable_ranges()` — ranges by robot and provenance, with the note that SIMULATED and
    DATASET rows must never be reported as real-world performance.
 
-Try it:
+Try it, on the command line or over the read-only API:
 
 ```powershell
 .\.venv\Scripts\python.exe -m cargo.maintenance --robot robot-bravo
+
+# or, with `cargo.history_api` running:
+curl http://127.0.0.1:8099/api/copilot
+curl "http://127.0.0.1:8099/api/copilot/why-stop?robot_id=robot-bravo"
+curl http://127.0.0.1:8099/api/copilot/vibration-exposure
 ```
+
+The endpoint ids are `why-stop`, `inspection`, `vibration-exposure`, `shift-summary`, `checklist`,
+`evidence` and `export-ranges`. `why-stop`, `checklist` and `evidence` require `robot_id`, which is
+validated by `contracts.validate_robot_id` before it reaches SQL.
 
 Every answer carries the `BOUNDARY` object describing what a copilot may and may not do, so a
 prompt cannot quietly widen the contract.

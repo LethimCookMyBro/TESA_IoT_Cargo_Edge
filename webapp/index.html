@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CargoShield · ศูนย์สาธิต Dataset Replay 3 มิติ</title>
+<title>CargoShield AI · ภารกิจปกป้องสินค้า</title>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="./styles.css">
 <script type="importmap">
@@ -12,6 +12,8 @@
 </head>
 <body>
 
+<a class="skip-link" href="#protection">ข้ามไปยังสรุปการปกป้องสินค้า</a>
+
 <header class="topbar">
   <div class="brand">
     <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -19,28 +21,31 @@
       <path d="m8.6 12 2.4 2.4 4.4-4.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     <div>
-      <h1>CargoShield</h1>
-      <p class="brand-sub">ศูนย์สาธิต Dataset Replay 3 มิติ</p>
+      <h1>CargoShield <span class="brand-ai">AI</span></h1>
+      <p class="brand-sub">ระบบปกป้องสินค้าเปราะบางสำหรับหุ่นยนต์ขนส่ง</p>
     </div>
   </div>
 
   <nav class="nav" aria-label="สลับหน้าจอ">
-    <a href="./index.html" aria-current="page">ปฏิบัติการเดโม (Dataset Replay)</a>
-    <a href="./fleet.html">วิเคราะห์กองหุ่นยนต์ (Fleet Intelligence)</a>
+    <a href="./index.html" aria-current="page">ภารกิจปกป้องสินค้า</a>
+    <a href="./fleet.html">Fleet Guardian</a>
   </nav>
 
   <div class="topbar-stats">
+    <span class="provenance" id="provenance-badge" title="ที่มาของข้อมูลที่กำลังแสดง">
+      <svg class="provenance-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+        <rect x="1.6" y="1.6" width="12.8" height="12.8" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M5 8.2 7 10.4 11 5.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span id="provenance-text">DATASET REPLAY</span>
+    </span>
     <div class="stat">
-      <span class="stat-key">การเชื่อมต่อ</span>
-      <span class="stat-value"><span id="link-dot" class="dot dot-idle" aria-hidden="true"></span><span id="link-text">กำลังเชื่อมต่อ…</span></span>
-    </div>
-    <div class="stat">
-      <span class="stat-key">อุปกรณ์</span>
-      <span class="stat-value" id="device-id">—</span>
-    </div>
-    <div class="stat">
-      <span class="stat-key">ภารกิจ</span>
+      <span class="stat-key">สถานะภารกิจ (engine)</span>
       <span class="stat-value"><strong id="status" class="tone-idle" role="status" aria-live="polite">—</strong></span>
+    </div>
+    <div class="stat">
+      <span class="stat-key">การเชื่อมต่อ · อุปกรณ์</span>
+      <span class="stat-value"><span id="link-dot" class="dot dot-idle" aria-hidden="true"></span><span id="link-text">กำลังเชื่อมต่อ…</span> · <span id="device-id">—</span></span>
     </div>
     <div class="stat">
       <span class="stat-key">อัปเดตสถานะ MQTT ล่าสุด</span>
@@ -50,33 +55,82 @@
 </header>
 
 <main class="layout">
-  <section class="stage" aria-label="ฉากจำลองคลังสินค้า">
-    <canvas id="stage" aria-label="ภาพสามมิติของคลังสินค้า เส้นทาง และหุ่นยนต์ขนส่ง"></canvas>
+
+  <section class="stage" aria-label="ฉากจำลองคลังสินค้าสามมิติ">
+    <canvas id="stage" aria-label="ภาพสามมิติของคลังสินค้า เส้นทาง เขตเสี่ยง และหุ่นยนต์ขนส่ง"></canvas>
+
+    <p class="stage-note">ภาพสาธิตจากสถานะที่ Python Engine เผยแพร่ — ไม่ใช่ตำแหน่งจริง ไม่มี SLAM และไม่ใช่การวัดจากหุ่นยนต์จริง</p>
 
     <div class="stage-toolbar">
       <button type="button" id="reset-camera" class="ghost">รีเซ็ตมุมกล้อง</button>
       <span class="chip" id="fps" title="อัตราเฟรมของภาพสามมิติ">— fps</span>
     </div>
 
-    <ul class="legend" aria-label="คำอธิบายสีของเส้นทาง">
-      <li><i class="swatch" style="--swatch:#22c55e"></i>เส้นทางด้านหลัง</li>
-      <li><i class="swatch" style="--swatch:#38bdf8"></i>ช่วงที่กำลังเดินทาง</li>
-      <li><i class="swatch" style="--swatch:#3b4c5e"></i>เส้นทางข้างหน้า</li>
-      <li><i class="swatch" style="--swatch:#facc15"></i>เขตชะลอ</li>
-      <li><i class="swatch" style="--swatch:#ef4444"></i>เขตหยุดปลอดภัย</li>
+    <ul class="legend" aria-label="คำอธิบายสัญลักษณ์ในฉากสามมิติ">
+      <li><i class="swatch" style="--swatch:#34d399"></i>ผ่านมาแล้ว</li>
+      <li><i class="swatch" style="--swatch:#22d3ee"></i>ช่วงที่กำลังเดินทาง</li>
+      <li><i class="swatch" style="--swatch:#4b5f73"></i>เส้นทางข้างหน้า</li>
+      <li><i class="swatch swatch-risk"></i>ความเสี่ยงโซน ต่ำ→สูง</li>
+      <li><i class="swatch" style="--swatch:#fbbf24"></i>AI สั่งชะลอ</li>
+      <li><i class="swatch" style="--swatch:#a78bfa"></i>AI ไม่มั่นใจ</li>
+      <li><i class="swatch" style="--swatch:#f87171"></i>หยุดปลอดภัย</li>
     </ul>
 
-    <p class="stage-note">ภาพจาก Dataset Replay — ไม่ใช่ตำแหน่งหรือการวัดจากหุ่นยนต์จริง การตัดสินใจทั้งหมดมาจาก Python Engine</p>
     <div id="stage-fallback" class="stage-fallback" hidden role="alert">
       <strong>เบราว์เซอร์นี้ไม่รองรับ WebGL</strong>
-      <span>ส่วนควบคุมและข้อมูลสถานะยังใช้งานได้ตามปกติ</span>
+      <span>ภาพสามมิติถูกปิด แต่ส่วนควบคุมและข้อมูลสถานะทั้งหมดยังใช้งานได้ตามปกติ</span>
     </div>
   </section>
 
-  <aside class="side" aria-label="ส่วนควบคุมและข้อมูลสถานะ">
+  <aside class="side" aria-label="สรุปการปกป้องสินค้าและส่วนควบคุม">
 
-    <section class="panel">
-      <h2>ควบคุมภารกิจ</h2>
+    <section class="protection" id="protection" aria-labelledby="protection-heading">
+      <h2 id="protection-heading" class="eyebrow">สถานะการปกป้องสินค้า</h2>
+
+      <p class="protection-state tone-idle" id="protection-state" role="status" aria-live="polite">
+        <svg class="protection-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#glyph-watch"></use></svg>
+        <span>
+          <b id="protection-label">—</b>
+          <small id="protection-english">NO STATE YET</small>
+        </span>
+      </p>
+
+      <p class="cargo-line">
+        <span class="eyebrow">สินค้าที่กำลังขน</span>
+        <b id="v-cargo_type">—</b>
+        <span class="cargo-zone">โซนปัจจุบัน <b id="v-zone">—</b></span>
+      </p>
+
+      <ul class="vitals" aria-label="ค่าหลักสามค่าของภารกิจ">
+        <li class="vital" id="vital-risk">
+          <span class="eyebrow">ความเสี่ยงแรงสั่น</span>
+          <b id="v-risk">—</b>
+        </li>
+        <li class="vital" id="vital-action">
+          <span class="eyebrow">AI สั่งการ</span>
+          <b id="v-action">—</b>
+        </li>
+        <li class="vital" id="vital-speed">
+          <span class="eyebrow">ความเร็วที่ใช้</span>
+          <b id="v-speed_ratio">—</b>
+        </li>
+      </ul>
+
+      <p class="field progress-field">
+        <label for="v-progress"><span id="progress-label">ความคืบหน้า</span> <output id="progress-value" for="v-progress">—</output></label>
+        <progress id="v-progress" max="1" value="0"></progress>
+      </p>
+
+      <dl class="readout route-readout">
+        <dt>เส้นทาง</dt><dd id="v-route_nodes">—</dd>
+        <dt>สิ่งกีดขวางจำลอง</dt><dd id="v-obstacle_distance">—</dd>
+      </dl>
+
+      <p class="provenance-note" id="v-source">—</p>
+    </section>
+
+    <section class="panel" aria-labelledby="controls-heading">
+      <h2 id="controls-heading">ควบคุมภารกิจ</h2>
       <div class="btn-row">
         <button type="button" data-cmd="start" class="primary">เริ่ม Dataset Replay</button>
         <button type="button" data-cmd="pause">หยุดชั่วคราว</button>
@@ -118,62 +172,69 @@
       </div>
     </section>
 
-    <section class="panel">
-      <h2>สถานะภารกิจเดโม</h2>
+    <details class="panel tech">
+      <summary>รายละเอียดทางเทคนิค</summary>
       <dl class="readout">
-        <dt>สินค้า</dt><dd id="v-cargo_type">—</dd>
-        <dt>โซน</dt><dd id="v-zone">—</dd>
-        <dt>สิ่งกีดขวาง</dt><dd id="v-obstacle_distance">—</dd>
-        <dt>โหมดข้อมูล</dt><dd id="v-source" class="wrap">—</dd>
-      </dl>
-      <p class="field">
-        <label for="v-progress"><span id="progress-label">ความคืบหน้า</span> <output id="progress-value" for="v-progress">—</output></label>
-        <progress id="v-progress" max="1" value="0"></progress>
-      </p>
-    </section>
-
-    <section class="panel">
-      <h2>AI จำแนกพื้นผิว</h2>
-      <dl class="readout">
-        <dt>ประเภทพื้น</dt><dd id="v-label">—</dd>
+        <dt>โมเดลจำแนกพื้นผิว</dt><dd id="v-label">—</dd>
         <dt>ความมั่นใจ</dt><dd id="v-confidence">—</dd>
-        <dt>ความเสี่ยงการสั่น</dt><dd id="v-risk">—</dd>
-      </dl>
-    </section>
-
-    <section class="panel">
-      <h2>การตัดสินใจด้านความปลอดภัย</h2>
-      <dl class="readout">
-        <dt>การทำงาน</dt><dd id="v-action">—</dd>
-        <dt>อัตราความเร็ว</dt><dd id="v-speed_ratio">—</dd>
-        <dt>เหตุผล</dt><dd id="v-reason" class="wrap">—</dd>
-      </dl>
-    </section>
-
-    <section class="panel">
-      <h2>เส้นทางและความเสี่ยง</h2>
-      <dl class="readout">
-        <dt>เส้นทาง</dt><dd id="v-route_nodes">—</dd>
-        <dt>นโยบาย</dt><dd id="v-route_reason" class="wrap">—</dd>
-      </dl>
-      <ul id="risk-list" class="risk-list" aria-label="ความเสี่ยงที่ตรวจพบในแต่ละโซน"></ul>
-    </section>
-
-    <section class="panel">
-      <h2>ลำดับเหตุการณ์</h2>
-      <ol id="timeline" class="timeline" aria-live="polite" aria-relevant="additions"></ol>
-    </section>
-
-    <section class="panel">
-      <h2>ข้อมูลการเชื่อมต่อ</h2>
-      <dl class="readout">
+        <dt>เหตุผลจาก Safety Core</dt><dd id="v-reason" class="wrap">—</dd>
+        <dt>นโยบายเส้นทาง</dt><dd id="v-route_reason" class="wrap">—</dd>
         <dt>Broker</dt><dd id="v-url" class="wrap">—</dd>
         <dt>State Topic</dt><dd id="v-topic" class="wrap">—</dd>
         <dt>ข้อผิดพลาดล่าสุด</dt><dd id="v-error" class="wrap">ไม่มี</dd>
       </dl>
-    </section>
+    </details>
   </aside>
+
+  <section class="deck" aria-label="คำอธิบายการตัดสินใจ ลำดับเหตุการณ์ และความเสี่ยงรายโซน">
+    <article class="deck-card" aria-labelledby="explain-heading">
+      <h2 id="explain-heading">เกิดอะไรขึ้นตอนนี้?</h2>
+      <ul class="explain" id="explain" aria-live="polite"><li>รอสถานะแรกจาก Python Engine</li></ul>
+    </article>
+
+    <article class="deck-card" aria-labelledby="risk-heading">
+      <h2 id="risk-heading">ความเสี่ยงสะสมรายโซน</h2>
+      <ul id="risk-list" class="risk-list" aria-label="ความเสี่ยงที่ตรวจพบในแต่ละโซน"></ul>
+    </article>
+
+    <article class="deck-card" aria-labelledby="timeline-heading">
+      <h2 id="timeline-heading">ลำดับเหตุการณ์</h2>
+      <ol id="timeline" class="timeline" aria-live="polite" aria-relevant="additions"></ol>
+    </article>
+  </section>
 </main>
+
+<svg class="glyph-defs" aria-hidden="true" focusable="false">
+  <symbol id="glyph-shield" viewBox="0 0 24 24">
+    <path d="M12 2.5 4.5 5.4v6c0 4.7 3.2 8.8 7.5 10.1 4.3-1.3 7.5-5.4 7.5-10.1v-6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="m8.6 12 2.5 2.5 4.4-4.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="glyph-slow" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <path d="M12 7v5.4l3.4 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="glyph-question" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <path d="M9.4 9.3a2.7 2.7 0 1 1 3.4 2.6c-.6.2-.9.7-.9 1.3v.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="11.9" cy="16.7" r="1.1" fill="currentColor"/>
+  </symbol>
+  <symbol id="glyph-stop" viewBox="0 0 24 24">
+    <path d="M8.6 2.9h6.8L21.1 8.6v6.8L15.4 21.1H8.6L2.9 15.4V8.6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M9 9l6 6M15 9l-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="glyph-pause" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <path d="M10 8.6v6.8M14 8.6v6.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="glyph-watch" viewBox="0 0 24 24">
+    <path d="M2.6 12S6.2 5.9 12 5.9 21.4 12 21.4 12 17.8 18.1 12 18.1 2.6 12 2.6 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+    <circle cx="12" cy="12" r="2.9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+  </symbol>
+  <symbol id="glyph-check" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+    <path d="m8 12.2 2.7 2.7L16.2 9.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</svg>
 
 <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
 

@@ -482,7 +482,11 @@ MQTT Bridge              : ทำงานแล้ว
 Obstacle Contract        : ทำงานแล้ว (ตอบสนองทันทีต่อ input จำลอง)
 Demo Replay              : ทำงานแล้ว (10 หน้าต่าง ~10 วินาที)
 End-to-End MQTT          : ตรวจผ่านแล้ว 14/14 (reports/demo_e2e_evidence.json)
-Automated Tests          : 131 passed, 111 subtests
+Automated Tests          : 141 passed, 139 subtests
+Mission Protection UI    : ทำงานแล้ว (Cargo Protection State + Risk/Action/Speed เป็นหัวข้อหลัก)
+Fleet Guardian           : ทำงานแล้ว เป็นโมดูลภายใต้ CargoShield AI
+Maintenance Assistant    : ทำงานแล้ว อ่านอย่างเดียว 7 คำถาม พร้อมแถวหลักฐาน
+Hermes Provider          : ยังไม่เชื่อมต่อ (แสดงตามจริงบนหน้าเว็บ)
 3D Operator Console      : ทำงานแล้ว ตรวจในเบราว์เซอร์จริงแล้ว (reports/webapp_ui_evidence.json)
 Sensor Studio State View : ยังสร้าง/Export ด้วยมือได้เป็นงานเสริม
 Visual Flow Export       : ยังไม่มี ต้องคลิก Export ใน Studio

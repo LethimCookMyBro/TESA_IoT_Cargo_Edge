@@ -17,10 +17,30 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from . import contracts, db
+from . import contracts, db, maintenance
 
 DEFAULT_LIMIT, MAX_LIMIT = 200, 5000
 MAX_REJECTED_BODY_BYTES = 64 * 1024
+
+# The curated questions a Maintenance Copilot may ask, mapped to the read-only methods that answer
+# them. This dict is the whole allowlist: a question that is not a key here has no endpoint, and
+# nothing on the wire can name a method that is not listed. `needs_robot` marks the per-robot ones.
+COPILOT_QUESTIONS: dict[str, dict[str, Any]] = {
+    "why-stop": {"method": "why_did_robot_stop", "needs_robot": True,
+                 "th": "ทำไมหุ่นยนต์ตัวนี้ Safe Stop หรือเสื่อมสภาพ?"},
+    "inspection": {"method": "robots_needing_inspection", "needs_robot": False,
+                   "th": "หุ่นยนต์ตัวไหนควรตรวจสภาพ?"},
+    "vibration-exposure": {"method": "highest_vibration_exposure", "needs_robot": False,
+                           "th": "โซนไหนมีแรงสั่นสะสมสูงที่สุด?"},
+    "shift-summary": {"method": "shift_summary", "needs_robot": False,
+                      "th": "สรุปเหตุการณ์ของกะนี้"},
+    "checklist": {"method": "maintenance_checklist", "needs_robot": True,
+                  "th": "สร้าง maintenance checklist (ฉบับร่างให้มนุษย์ตรวจ)"},
+    "evidence": {"method": "evidence_for_conclusion", "needs_robot": True,
+                 "th": "แสดงหลักฐานเซ็นเซอร์รอบเหตุการณ์"},
+    "export-ranges": {"method": "exportable_ranges", "needs_robot": False,
+                      "th": "ช่วงข้อมูลใดเหมาะกับการ export ไปตรวจหรือ train รอบใหม่?"},
+}
 
 
 def _limit(params: dict[str, list[str]]) -> int:
@@ -133,6 +153,7 @@ class HistoryQueries:
 
 class Handler(BaseHTTPRequestHandler):
     queries: HistoryQueries
+    copilot: maintenance.MaintenanceContext
     server_version = "CargoShieldHistoryAPI/1"
 
     def log_message(self, fmt: str, *args) -> None:  # keep the demo console readable
@@ -202,8 +223,13 @@ class Handler(BaseHTTPRequestHandler):
         if parts in ([], ["api"]):
             return {"endpoints": ["/api/health", "/api/fleet", "/api/events", "/api/telemetry",
                                   "/api/predictions", "/api/missions", "/api/maintenance",
-                                  "/api/zones", "/api/data-quality", "/api/exports"],
+                                  "/api/zones", "/api/data-quality", "/api/exports",
+                                  "/api/copilot", "/api/copilot/{question}"],
                     "methods": ["GET"], "writes": "none"}
+        if parts == ["api", "copilot"]:
+            return self._copilot_index()
+        if len(parts) == 3 and parts[:2] == ["api", "copilot"]:
+            return self._copilot_answer(parts[2], params, robot)
         if parts == ["api", "health"]:
             return queries.health()
         if parts == ["api", "fleet"]:
@@ -231,9 +257,56 @@ class Handler(BaseHTTPRequestHandler):
             return {"manifests": queries.manifests(limit)}
         raise FileNotFoundError(f"no such endpoint: /{'/'.join(parts)}")
 
+    # ---------- Maintenance Copilot: the read-only boundary, over GET ----------
 
-def serve(host: str = "127.0.0.1", port: int = 8099, settings: db.Settings | None = None) -> ThreadingHTTPServer:
-    handler = type("BoundHandler", (Handler,), {"queries": HistoryQueries(settings)})
+    def _copilot_index(self) -> dict[str, Any]:
+        """What may be asked, what the boundary forbids, and whether any provider is wired in."""
+        ok, reason = self.copilot.available()
+        return {
+            # Stated from what this repository actually contains, not from an aspiration: nothing
+            # here holds a model client, an endpoint, an API key or an outbound call. Answers below
+            # are deterministic SQL over the read-only role.
+            "provider": None,
+            "provider_status": "not_connected",
+            "provider_note": "No copilot provider is configured in this repository. Answers are "
+                             "deterministic SQL over the SELECT-only PostgreSQL role; see "
+                             "docs/HERMES_MAINTENANCE_COPILOT.md to connect one.",
+            "analysis_mode": "deterministic",
+            "human_approval_required": True,
+            "available": ok,
+            "reason": reason,
+            "questions": [{"id": key, "question_th": entry["th"], "needs_robot": entry["needs_robot"]}
+                          for key, entry in COPILOT_QUESTIONS.items()],
+            "boundary": maintenance.BOUNDARY,
+        }
+
+    def _copilot_answer(self, question: str, params: dict[str, list[str]], robot: str | None) -> dict[str, Any]:
+        entry = COPILOT_QUESTIONS.get(question)
+        if entry is None:
+            raise FileNotFoundError(f"no such copilot question: {question!r}")
+        if entry["needs_robot"] and robot is None:
+            raise contracts.ContractError(f"copilot question {question!r} requires a robot_id")
+        method = getattr(self.copilot, entry["method"])
+        if question == "evidence":
+            try:
+                around_ms = int(params.get("around_ms", ["0"])[0])
+            except (TypeError, ValueError):
+                raise contracts.ContractError("around_ms must be an integer millisecond timestamp")
+            answer = method(robot, around_ms=around_ms)
+        else:
+            answer = method(robot) if entry["needs_robot"] else method()
+        # `provider` travels with every answer so a screenshot can never imply a live model wrote it.
+        return {**answer.as_dict(), "question_id": question, "provider": None,
+                "analysis_mode": "deterministic", "human_approval_required": True}
+
+
+def serve(host: str = "127.0.0.1", port: int = 8099, settings: db.Settings | None = None,
+          readonly_settings: db.Settings | None = None) -> ThreadingHTTPServer:
+    """History over `settings`; the copilot boundary over the SELECT-only role, deliberately apart."""
+    handler = type("BoundHandler", (Handler,), {
+        "queries": HistoryQueries(settings),
+        "copilot": maintenance.MaintenanceContext(readonly_settings),
+    })
     return ThreadingHTTPServer((host, port), handler)
 
 

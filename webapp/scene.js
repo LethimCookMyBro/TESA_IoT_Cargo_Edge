@@ -8,17 +8,24 @@
 import * as THREE from 'three';
 import { OrbitControls } from './vendor/three/OrbitControls.js';
 import {
-  ZONE_POSITIONS, DEMO_EDGES, motion, routePosition, obstacleTone, surfaceTint, read, statusTone,
+  ZONE_POSITIONS, DEMO_EDGES, motion, routePosition, obstacleTone, surfaceTint, read, actionTone,
 } from './controls.js';
 
+// Lifted out of near-black: the previous floor (#14181d) under a dark background read as an unlit
+// void in every screenshot. These values keep the industrial control-room mood while leaving the
+// warehouse legible as a space with depth.
 const COLORS = {
-  floor: 0x14181d, grid: 0x1f2a33, wall: 0x1a2027, rack: 0x3a4550, pallet: 0x6d5a3c,
-  lane: 0x27333d, travelled: 0x22c55e, current: 0x38bdf8, remaining: 0x3b4c5e,
-  zone: 0x2b3540, robot: 0x2f3a45, skirt: 0xd9a520, wheel: 0x15191d,
-  cargoStandard: 0x8aa2b8, cargoFragile: 0xffb445, strap: 0xef4444,
-  go: 0x22c55e, hold: 0xf59e0b, stop: 0xef4444, idle: 0x64748b,
-  obstacleWarn: 0xfacc15, obstacleStop: 0xef4444, obstacleClear: 0x94a3b8,
+  floor: 0x232d38, grid: 0x3c4d5d, wall: 0x2b3641, rack: 0x53616f, pallet: 0x8a7048,
+  lane: 0x3a4855, travelled: 0x34d399, current: 0x22d3ee, remaining: 0x4b5f73,
+  zone: 0x36434f, robot: 0x415061, skirt: 0xe0ab2b, wheel: 0x1b2027,
+  cargoStandard: 0x9db4ca, cargoFragile: 0xffb445, strap: 0xef4444,
+  go: 0x34d399, hold: 0xfbbf24, stop: 0xf87171, idle: 0x7f8fa1, uncertain: 0xa78bfa,
+  obstacleWarn: 0xfbbf24, obstacleStop: 0xf87171, obstacleClear: 0x9db4ca,
 };
+
+// How loudly the ground ring states each action. MOVE is deliberately faint -- it is reassurance,
+// not an alert -- and an action with no entry here draws no ring at all.
+const AURA_OPACITY = { MOVE: 0.16, SLOW_DOWN: 0.34, HOLD_UNCERTAIN: 0.42, SAFE_STOP: 0.6 };
 
 // Centimetres of simulated obstacle distance per metre of scene. The slider tops out at 200 cm,
 // which puts the marker 10 m ahead; the engine's 30 cm stop region lands at 1.5 m.
@@ -52,30 +59,36 @@ function makeLabel(width = 256, height = 128) {
   return { sprite, draw };
 }
 
+// Eight racks share one set of geometries and materials rather than allocating their own: the
+// warehouse is the same shelf repeated, and duplicating it eight times bought nothing but memory
+// and shadow-pass work.
+const RACK = {
+  upright: new THREE.BoxGeometry(0.2, 4.2, 0.2),
+  shelf: new THREE.BoxGeometry(3.4, 0.12, 1.6),
+  pallet: new THREE.BoxGeometry(1.2, 0.9, 1.1),
+  frame: new THREE.MeshStandardMaterial({ color: COLORS.rack, roughness: 0.75, metalness: 0.35 }),
+  pallets: new THREE.MeshStandardMaterial({ color: COLORS.pallet, roughness: 0.9 }),
+};
+
 function buildRack(shelves = 3) {
   const rack = new THREE.Group();
-  const frame = new THREE.MeshStandardMaterial({ color: COLORS.rack, roughness: 0.75, metalness: 0.35 });
-  const upright = new THREE.BoxGeometry(0.2, 4.2, 0.2);
   for (const x of [-1.6, 1.6]) for (const z of [-0.7, 0.7]) {
-    const post = new THREE.Mesh(upright, frame);
+    const post = new THREE.Mesh(RACK.upright, RACK.frame);
     post.position.set(x, 2.1, z);
-    post.castShadow = true;
     rack.add(post);
   }
-  const shelf = new THREE.BoxGeometry(3.4, 0.12, 1.6);
-  const pallet = new THREE.BoxGeometry(1.2, 0.9, 1.1);
-  const palletMaterial = new THREE.MeshStandardMaterial({ color: COLORS.pallet, roughness: 0.9 });
   for (let level = 0; level < shelves; level += 1) {
-    const board = new THREE.Mesh(shelf, frame);
+    const board = new THREE.Mesh(RACK.shelf, RACK.frame);
     board.position.y = 0.6 + level * 1.6;
+    // Only the shelf boards cast; posts and stock read as solid from their own shading, and
+    // keeping ~90 extra meshes out of the shadow pass is what buys the frame rate back.
     board.castShadow = board.receiveShadow = true;
     rack.add(board);
     // Deterministic gaps, so the warehouse looks stocked without pretending to be inventory data.
     for (const [slot, x] of [[0, -0.9], [1, 0.9]]) {
       if ((level + slot) % 3 === 2) continue;
-      const box = new THREE.Mesh(pallet, palletMaterial);
+      const box = new THREE.Mesh(RACK.pallet, RACK.pallets);
       box.position.set(x, 1.11 + level * 1.6, 0);
-      box.castShadow = true;
       rack.add(box);
     }
   }
@@ -124,15 +137,23 @@ function buildRobot() {
   cargo.castShadow = true;
   const cargoEdges = new THREE.LineSegments(new THREE.EdgesGeometry(cargo.geometry), new THREE.LineBasicMaterial({ color: 0x0b0f13 }));
   cargoEdges.position.copy(cargo.position);
-  // Only fragile cargo is strapped, so the two cargo types are told apart from any camera angle.
-  const strap = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.22, 2.4), new THREE.MeshStandardMaterial({ color: COLORS.strap, roughness: 0.5 }));
-  strap.position.y = 2.3;
-  strap.visible = false;
+  // Only fragile cargo is restrained, so the two cargo types are told apart from any camera angle:
+  // a lateral and a longitudinal strap crossing over the load, the way a real fragile pallet ships.
+  const strapMaterial = new THREE.MeshStandardMaterial({ color: COLORS.strap, roughness: 0.5 });
+  const straps = new THREE.Group();
+  for (const [w, d] of [[2.06, 0.34], [0.34, 2.46]]) {
+    const band = new THREE.Mesh(new THREE.BoxGeometry(w, 1.58, d), strapMaterial);
+    band.position.y = 2.3;
+    straps.add(band);
+  }
+  straps.visible = false;
   const cargoLabel = makeLabel(256, 96);
   cargoLabel.sprite.scale.set(3.2, 1.2, 1);
   cargoLabel.sprite.position.set(0, 3.6, 0);
-  robot.add(cargo, cargoEdges, strap, cargoLabel.sprite);
+  robot.add(cargo, cargoEdges, straps, cargoLabel.sprite);
 
+  // One ground ring carries the engine's action back to the operator: faint green under a MOVE,
+  // amber under a SLOW_DOWN, violet under HOLD_UNCERTAIN, and a bright red perimeter on SAFE_STOP.
   const perimeter = new THREE.Mesh(
     new THREE.RingGeometry(3.0, 3.5, 48),
     new THREE.MeshBasicMaterial({ color: COLORS.stop, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false }),
@@ -142,7 +163,7 @@ function buildRobot() {
   perimeter.visible = false;
   robot.add(perimeter);
 
-  return { robot, wheels, beacon, beaconLight, cargoMaterial, strap, cargoLabel, perimeter };
+  return { robot, wheels, beacon, beaconLight, cargoMaterial, straps, cargoLabel, perimeter };
 }
 
 function buildObstacle() {
@@ -195,8 +216,8 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
   renderer.toneMappingExposure = 1.05;
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0d11);
-  scene.fog = new THREE.Fog(0x0a0d11, 62, 132);
+  scene.background = new THREE.Color(0x121a24);
+  scene.fog = new THREE.Fog(0x121a24, 70, 145);
 
   const camera = new THREE.PerspectiveCamera(48, 1, 0.5, 220);
   // Framed so the whole demo map, both rack walls and the zone labels fit at 16:9 and on a laptop.
@@ -211,8 +232,9 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
   controls.maxPolarAngle = Math.PI * 0.48;
   controls.target.copy(HOME.target);
 
-  scene.add(new THREE.HemisphereLight(0x9fc6ff, 0x141a20, 1.0));
-  const key = new THREE.DirectionalLight(0xf2f6ff, 1.6);
+  // Warehouse ambient: the sky term lifts the floor, the ground term keeps undersides readable.
+  scene.add(new THREE.HemisphereLight(0xbcd8ff, 0x35424f, 1.7));
+  const key = new THREE.DirectionalLight(0xf2f6ff, 1.9);
   key.position.set(22, 34, 16);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
@@ -222,7 +244,7 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
   key.shadow.camera.updateProjectionMatrix();
   key.shadow.bias = -0.0008;
   scene.add(key);
-  const fill = new THREE.DirectionalLight(0x5f7fa8, 0.35);
+  const fill = new THREE.DirectionalLight(0x7fa3cc, 0.6);
   fill.position.set(-20, 16, -22);
   scene.add(fill);
 
@@ -312,7 +334,7 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
     zoneMarkers.set(name, { pad, heat, active, label });
   }
 
-  const { robot, wheels, beacon, beaconLight, cargoMaterial, strap, cargoLabel, perimeter } = buildRobot();
+  const { robot, wheels, beacon, beaconLight, cargoMaterial, straps, cargoLabel, perimeter } = buildRobot();
   scene.add(robot);
   const obstacle = buildObstacle();
   scene.add(obstacle.group);
@@ -320,6 +342,7 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
   /* ---------------- state the animation loop reads ---------------- */
 
   const visual = { fraction: 0, heading: 0 };
+  let auraOpacity = 0;
   let target = { fraction: 0, nodes: [], speed: 0, animate: false, halted: false };
   let latest = null;
   let missionKey = '';
@@ -411,20 +434,27 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
     applyRoute(nodes, visual.fraction);
     applyZones(state, zone);
 
-    const tone = statusTone(status);
+    // AI feedback: the engine's own action drives the beacon and the ground ring, so the stage says
+    // the same thing the panels do. No status is inferred here -- both fields are published.
+    const action = read(state, 'last.decision.action');
+    const tone = actionTone(action);
     const toneColor = COLORS[tone] ?? COLORS.idle;
     beacon.material.color.setHex(toneColor);
     beacon.material.emissive.setHex(toneColor);
     beaconLight.color.setHex(toneColor);
     beaconLight.intensity = tone === 'idle' ? 0.6 : 2.2;
-    perimeter.visible = move.halted;
+    // Halted always shows the red perimeter; a live action shows its own softer ring.
+    perimeter.visible = move.halted || AURA_OPACITY[action] !== undefined;
+    perimeter.material.color.setHex(move.halted ? COLORS.stop : toneColor);
+    auraOpacity = move.halted ? 0.6 : (AURA_OPACITY[action] ?? 0);
+    perimeter.material.opacity = auraOpacity;
 
     const fragile = read(state, 'cargo_type') === 'fragile';
     cargoMaterial.color.setHex(fragile ? COLORS.cargoFragile : COLORS.cargoStandard);
     cargoMaterial.transparent = fragile;
     cargoMaterial.opacity = fragile ? 0.72 : 1;
     cargoMaterial.needsUpdate = true;
-    strap.visible = fragile;
+    straps.visible = fragile;
     cargoLabel.draw(fragile ? 'FRAGILE' : 'STANDARD', '', fragile ? '#ffb445' : '#cbd5e1');
 
     const distance = read(state, 'obstacle_distance');
@@ -489,8 +519,11 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
     }
 
     if (!reducedMotion) {
-      const pulse = 0.45 + Math.abs(Math.sin(clock.elapsedTime * 3.2)) * 0.35;
-      if (perimeter.visible) perimeter.material.opacity = pulse;
+      // A gentle breathe, never a hard blink. Only a halted robot pulses; a MOVE or SLOW_DOWN ring
+      // holds the steady opacity `apply` set, so the stage does not flash during a normal run.
+      const pulse = 0.45 + Math.abs(Math.sin(clock.elapsedTime * 2.2)) * 0.3;
+      if (target.halted && perimeter.visible) perimeter.material.opacity = pulse;
+      else if (perimeter.visible) perimeter.material.opacity = auraOpacity;
       if (obstacle.zone.visible) obstacle.zone.material.opacity = pulse;
       beacon.material.emissiveIntensity = target.halted ? 0.7 + pulse : 1.3;
     }

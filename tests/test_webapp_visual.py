@@ -21,9 +21,20 @@ WEBAPP = ROOT / "webapp"
 # Statuses the engine can put on the wire, plus the two terminal ones it sets directly.
 STATUSES = sorted(set(STATUS_BY_ACTION.values()) | {"IDLE", "READY", "COMPLETED", "PAUSED", "ERROR"})
 
+# Every action `cargo.decision_engine.decide` can return.
+ACTIONS = sorted(STATUS_BY_ACTION)
+
 EXTRACT = """
-import { OBSTACLE_POLICY, ZONE_POSITIONS, DEMO_EDGES, SURFACE_TINTS, obstacleTone, motion, routePosition } from './controls.js';
+import { OBSTACLE_POLICY, ZONE_POSITIONS, DEMO_EDGES, SURFACE_TINTS, obstacleTone, motion,
+  routePosition, PROTECTION_STATES, protectionState, actionTone, explain } from './controls.js';
 const statuses = %s;
+const actions = %s;
+const window = (extra) => ({
+  status: 'MOVING', cargo_type: 'fragile', obstacle_distance: null,
+  last: { label: 'carpet', risk: 'high', confidence: 0.62,
+          decision: { action: 'SLOW_DOWN', speed_ratio: 0.45, reason: 'engine reason' } },
+  ...extra,
+});
 console.log(JSON.stringify({
   policy: OBSTACLE_POLICY,
   zones: Object.keys(ZONE_POSITIONS),
@@ -38,15 +49,35 @@ console.log(JSON.stringify({
   ].map(([zone, progress]) => [zone, progress, routePosition(['A1', 'A2', 'B2', 'C2'], zone, progress)]),
   no_route: routePosition([], 'A1', 0.5),
   no_progress: routePosition(['A1', 'A2', 'B2', 'C2'], 'B2', null),
+  protection_keys: Object.keys(PROTECTION_STATES),
+  protection: statuses.map((status) => [status, protectionState({ status })]),
+  protection_unknown: protectionState({ status: 'NOT_A_STATUS' }),
+  protection_absent: protectionState({}),
+  action_tones: actions.map((action) => [action, actionTone(action)]),
+  action_tone_unknown: actionTone(undefined),
+  explain_slow: explain(window({})),
+  explain_stop: explain(window({
+    obstacle_distance: 20,
+    last: { label: 'concrete', risk: 'low', confidence: 0.9,
+            decision: { action: 'SAFE_STOP', speed_ratio: 0, reason: 'obstacle' } },
+  })),
+  explain_hold: explain(window({
+    last: { label: 'wood', risk: 'medium', confidence: 0.31,
+            decision: { action: 'HOLD_UNCERTAIN', speed_ratio: 0, reason: 'low confidence' } },
+  })),
+  explain_empty: explain({ status: 'IDLE' }),
 }));
-""" % json.dumps(STATUSES)
+""" % (json.dumps(STATUSES), json.dumps(ACTIONS))
 
 
 def _extract() -> dict:
     script = WEBAPP / "_extract_visual.mjs"
     script.write_text(EXTRACT, encoding="utf-8")
     try:
-        result = subprocess.run([shutil.which("node"), str(script)], capture_output=True, text=True, timeout=60, cwd=str(WEBAPP))
+        # UTF-8 explicitly: the operator labels are Thai, and `text=True` would otherwise decode
+        # node's stdout with the system ANSI codepage (cp874 here) and fail on the first Thai byte.
+        result = subprocess.run([shutil.which("node"), str(script)], capture_output=True, text=True,
+                                encoding="utf-8", timeout=60, cwd=str(WEBAPP))
     finally:
         script.unlink(missing_ok=True)
     if result.returncode != 0:
@@ -114,6 +145,53 @@ class WebappVisualContractTests(unittest.TestCase):
         self.assertEqual(results[("ZZ", 0.3)], 0.3)
         self.assertIsNone(self.contract["no_route"])
         self.assertAlmostEqual(self.contract["no_progress"], 2 / 3)
+
+    def test_every_engine_status_has_a_cargo_protection_state(self):
+        """The headline renames what Python decided; a status with no entry would render blank."""
+        self.assertEqual(sorted(self.contract["protection_keys"]), STATUSES)
+        for status, state in self.contract["protection"]:
+            with self.subTest(status=status):
+                self.assertTrue(state["label"], f"{status} has no Thai label")
+                self.assertTrue(state["english"], f"{status} has no English label")
+                # Colour is never the only signal: every state also carries a shape.
+                self.assertTrue(state["glyph"], f"{status} has no glyph")
+
+    def test_the_headline_states_the_engine_halted_or_slowed(self):
+        by_status = dict(self.contract["protection"])
+        self.assertEqual(by_status["SAFE_STOPPED"]["tone"], "stop")
+        self.assertEqual(by_status["HOLDING"]["tone"], "uncertain")
+        self.assertEqual(by_status["SLOWING"]["tone"], "hold")
+        self.assertEqual(by_status["MOVING"]["tone"], "go")
+
+    def test_an_unknown_or_absent_status_stays_honestly_unknown(self):
+        for case in ("protection_unknown", "protection_absent"):
+            with self.subTest(case=case):
+                self.assertEqual(self.contract[case]["key"], "UNKNOWN")
+
+    def test_every_engine_action_has_its_own_stage_tone(self):
+        tones = dict(self.contract["action_tones"])
+        self.assertEqual(sorted(tones), ACTIONS)
+        # HOLD_UNCERTAIN must not share amber with a deliberate slow-down.
+        self.assertEqual(len(set(tones.values())), len(ACTIONS))
+        self.assertEqual(tones["HOLD_UNCERTAIN"], "uncertain")
+        self.assertEqual(self.contract["action_tone_unknown"], "idle")
+
+    def test_the_explanation_only_repeats_what_the_engine_published(self):
+        slow = self.contract["explain_slow"]
+        self.assertTrue(any("carpet" in line for line in slow), slow)
+        self.assertTrue(any("45%" in line for line in slow), "the engine's own speed ratio is missing")
+        # The raw Safety Core reason is always the last line, so an answer can be traced back.
+        self.assertIn("engine reason", slow[-1])
+
+        stop = self.contract["explain_stop"]
+        self.assertTrue(any("20" in line for line in stop), "the simulated obstacle distance is missing")
+        self.assertTrue(any("Safe Stop" in line for line in stop), stop)
+
+        hold = self.contract["explain_hold"]
+        self.assertTrue(any("0.31" in line for line in hold), "the confidence that caused the hold is missing")
+
+        # With no inference published there is nothing to explain, and nothing is invented.
+        self.assertEqual(self.contract["explain_empty"], [])
 
 
 if __name__ == "__main__":

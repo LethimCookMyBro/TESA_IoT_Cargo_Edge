@@ -58,6 +58,19 @@ export function statusTone(status) {
   return 'idle';
 }
 
+/**
+ * Visual tone of the engine's own action, for the 3D stage's AI feedback.
+ * Distinct from `statusTone` because HOLD_UNCERTAIN deserves its own "the model is unsure" colour
+ * rather than sharing amber with a deliberate slow-down.
+ */
+export function actionTone(action) {
+  if (action === 'SAFE_STOP') return 'stop';
+  if (action === 'HOLD_UNCERTAIN') return 'uncertain';
+  if (action === 'SLOW_DOWN') return 'hold';
+  if (action === 'MOVE') return 'go';
+  return 'idle';
+}
+
 /* ------------------------------------------------------------------ *
  * Visualization contract. The 3D scene renders published state only;
  * nothing below decides anything — the Python engine already did.
@@ -119,6 +132,84 @@ export function routePosition(nodes, zone, progress) {
   const next = index < 0 ? 1 : Math.min(1, (index + 1) / span);
   if (typeof progress !== 'number' || !Number.isFinite(progress)) return atZone;
   return Math.min(next, Math.max(atZone, Math.min(1, Math.max(0, progress))));
+}
+
+/* ------------------------------------------------------------------ *
+ * Presentation mapping. Everything below turns a status the Python
+ * engine already decided into words for the operator. Nothing here
+ * decides anything: every branch reads a field off the published state.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Cargo Protection State: the headline the operator reads in the first second.
+ * Keyed on `status`, which the engine sets from its own decision (see
+ * `cargo.controller.STATUS_BY_ACTION`), so this is a rename for humans, not a second opinion.
+ * `tone` drives colour, `glyph` drives a shape, `label` carries the meaning in text — a state is
+ * never signalled by colour alone.
+ */
+export const PROTECTION_STATES = {
+  MOVING:       { key: 'PROTECTED',   label: 'ปกป้องสินค้าอยู่',        english: 'PROTECTED',              tone: 'go',        glyph: 'shield' },
+  SLOWING:      { key: 'SLOWING',     label: 'ลดความเร็วเพื่อสินค้า',   english: 'SLOWING FOR CARGO',      tone: 'hold',      glyph: 'slow' },
+  HOLDING:      { key: 'HOLDING',     label: 'หยุดรอ — AI ไม่มั่นใจ',   english: 'HOLDING — LOW CONFIDENCE', tone: 'uncertain', glyph: 'question' },
+  SAFE_STOPPED: { key: 'SAFE_STOP',   label: 'หยุดปลอดภัย',             english: 'SAFE STOP',              tone: 'stop',      glyph: 'stop' },
+  PAUSED:       { key: 'PAUSED',      label: 'ผู้ควบคุมหยุดชั่วคราว',  english: 'PAUSED BY OPERATOR',     tone: 'hold',      glyph: 'pause' },
+  READY:        { key: 'MONITORING',  label: 'เฝ้าระวัง · พร้อมออกเดินทาง', english: 'MONITORING',         tone: 'idle',      glyph: 'watch' },
+  COMPLETED:    { key: 'DELIVERED',   label: 'ส่งถึงปลายทางแล้ว',       english: 'DELIVERED',              tone: 'go',        glyph: 'check' },
+  IDLE:         { key: 'STANDBY',     label: 'รอคำสั่งภารกิจ',          english: 'STANDBY',                tone: 'idle',      glyph: 'watch' },
+  ERROR:        { key: 'ERROR',       label: 'ระบบรายงานข้อผิดพลาด',   english: 'ERROR',                  tone: 'stop',      glyph: 'stop' },
+};
+
+const UNKNOWN_PROTECTION = {
+  key: 'UNKNOWN', label: 'ยังไม่ได้รับสถานะ', english: 'NO STATE YET', tone: 'idle', glyph: 'watch',
+};
+
+/** The published status as a Cargo Protection State. Unknown or absent stays honestly unknown. */
+export function protectionState(state) {
+  return PROTECTION_STATES[read(state, 'status')] ?? UNKNOWN_PROTECTION;
+}
+
+const RISK_WORDS = { low: 'ต่ำ', medium: 'ปานกลาง', high: 'สูง' };
+const CARGO_WORDS = { standard: 'สินค้าทั่วไป', fragile: 'สินค้าเปราะบาง' };
+
+const percent = (ratio) => `${Math.round(Math.min(1, Math.max(0, ratio)) * 100)}%`;
+
+/**
+ * "เกิดอะไรขึ้นตอนนี้?" — the engine's own action, risk, confidence and reason as plain sentences.
+ * Every line is built from a published field; when a field is missing the line is simply not shown,
+ * because inventing one would be the UI deciding something.
+ */
+export function explain(state) {
+  const action = read(state, 'last.decision.action');
+  const risk = read(state, 'last.risk');
+  const label = read(state, 'last.label');
+  const confidence = read(state, 'last.confidence');
+  const speed = read(state, 'last.decision.speed_ratio');
+  const reason = read(state, 'last.decision.reason');
+  const cargo = CARGO_WORDS[read(state, 'cargo_type')] ?? read(state, 'cargo_type');
+  const distance = read(state, 'obstacle_distance');
+  const lines = [];
+
+  if (risk && label) {
+    lines.push(`AI จำแนกพื้นเป็น ${label} และประเมินแรงสั่นระดับ${RISK_WORDS[risk] ?? risk}`);
+  }
+  if (action === 'SAFE_STOP') {
+    if (obstacleTone(distance) === 'stop') {
+      lines.push(`สิ่งกีดขวางจำลองที่ ${distance} ซม. อยู่ในเขตหยุดปลอดภัย (≤ ${OBSTACLE_POLICY.stop_distance} ซม.)`);
+    }
+    lines.push('ระบบล็อกการหยุด ต้องให้ผู้ควบคุมกดปลด Safe Stop ก่อนจึงจะเดินทางต่อได้');
+  } else if (action === 'HOLD_UNCERTAIN') {
+    lines.push(typeof confidence === 'number'
+      ? `ความมั่นใจของโมเดล ${confidence.toFixed(2)} ต่ำกว่าเกณฑ์ ระบบจึงหยุดรอแทนการเดา`
+      : 'ข้อมูลหรือความมั่นใจไม่พอ ระบบจึงหยุดรอแทนการเดา');
+  } else if (action === 'SLOW_DOWN') {
+    lines.push(obstacleTone(distance) === 'warn'
+      ? `สิ่งกีดขวางจำลองที่ ${distance} ซม. อยู่ในเขตชะลอ จึงลดความเร็วลง`
+      : `ลดความเร็วเหลือ ${percent(speed)} เพื่อปกป้อง${cargo}`);
+  } else if (action === 'MOVE') {
+    lines.push(`ความเสี่ยงอยู่ในเกณฑ์ที่รับได้ จึงเดินทางที่ ${percent(speed)} ของความเร็วสูงสุดสำหรับ${cargo}`);
+  }
+  if (reason) lines.push(`เหตุผลจาก Safety Core: ${reason}`);
+  return lines;
 }
 
 /** Floor tint per Surface AI class from `models/label_mapping.json`; null for anything unseen. */

@@ -18,3 +18,11 @@
   The 0.75 target was not reachable; `models/confidence_policy.json` records that honestly rather than hiding it.
 - No board pinout or connector evidence exists in this repository, so no expansion module is authorised.
   See `docs/HARDWARE_EXPANSION_MATRIX.md`.
+- The Maintenance Assistant is deterministic SQL, not a language model. No copilot provider is
+  configured: `/api/copilot` reports `provider: null` and the panel shows
+  "Hermes provider: Not connected". A `hermes-agent` CLI happens to be installed on the development
+  workstation, but nothing in this repository references, configures, launches or talks to it, and
+  no Hermes endpoint or tool contract has been proven. Do not describe the integration as active.
+- Frame-rate figures (26-32 fps headless on SwiftShader software rendering, 177 fps on an RTX 4050)
+  measure web rendering on a workstation and vary run to run. They say nothing about inference
+  performance on the target board.

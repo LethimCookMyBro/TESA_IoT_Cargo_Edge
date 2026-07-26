@@ -1,40 +1,156 @@
-# CargoShield Fleet Guardian
+# CargoShield AI
 
-[English version](README%28EN%29.md)
+### ระบบปกป้องสินค้าเปราะบางสำหรับหุ่นยนต์ขนส่ง
 
-ต้นแบบระบบดูแลหุ่นยนต์ขนส่งสินค้าแบบหลายตัวสำหรับ TESA IoT Cargo Edge ประกอบด้วย
-AI จำแนกพื้นผิวจากหน้าต่างข้อมูล IMU ที่บันทึกไว้, Safety Core แบบ deterministic,
-สัญญา MQTT แยกตามหุ่นยนต์, PostgreSQL Fleet Historian และหน้าเว็บ 3 มิติสำหรับสาธิต
-Dataset Replay กับหน้า Fleet Intelligence สำหรับดูข้อมูลย้อนหลัง
+**From Blind Delivery to Cargo-Aware Autonomy**
 
-> **สถานะข้อมูลปัจจุบัน:** ทุก record เป็น `DATASET` หรือ `SIMULATED` เท่านั้น
-> ยังไม่มีการวัดสดจากบอร์ด, ตำแหน่งจริง, SLAM, เซนเซอร์ระยะ, มอเตอร์ หรือการเคลื่อนที่จริง
+[English version](README%28EN%29.md) · [Product Story / โครงโปสเตอร์ / Demo script](docs/CARGOSHIELD_PRODUCT_STORY.md)
 
-## สิ่งที่ระบบทำได้แล้ว
+> **AI วิเคราะห์แรงสั่นสะเทือนระหว่างขนส่ง แล้วปรับความเร็ว เลือกเส้นทาง
+> และ Safe Stop เมื่อพบความเสี่ยงต่อสินค้า**
 
-- Replay หน้าต่าง IMU จาก validation split เข้าโมเดลทีละหน้าต่างผ่าน Python Engine
-- จำแนกพื้นผิว ประเมินความเสี่ยงการสั่น และตัดสินใจ `MOVE`, `SLOW_DOWN`,
-  `HOLD_UNCERTAIN` หรือ `SAFE_STOP`
-- ปรับนโยบายตามสินค้าทั่วไป/สินค้าเปราะบาง และจำความเสี่ยงรายโซนสำหรับวางเส้นทางรอบถัดไป
-- แยก state ของหุ่นยนต์หลายตัวและตรวจข้อมูลซ้ำ ลำดับผิด ค่ากระโดด และค่าที่ไม่เป็นตัวเลข
-- เก็บ telemetry, prediction, event และ mission ลง PostgreSQL ผ่าน queue ที่ไม่ขวาง Safety Core
-- แสดง Dataset Replay ในคลังสินค้า Three.js และแสดงภาพรวมกองหุ่นยนต์/ประวัติผ่าน Fleet Intelligence
-- เตรียมขอบเขต Maintenance Copilot แบบอ่านอย่างเดียว โดยไม่มีสิทธิ์สั่งหุ่นยนต์หรือแก้ Safety Core
+หุ่นยนต์ขนส่งทั่วไปมักรู้เพียงว่า “ต้องไปถึงจุดหมาย” แต่ไม่รู้ว่าสินค้าบนตัวกำลังได้รับแรงสั่นสะเทือนมากเกินไปหรือไม่
+CargoShield AI จึงเพิ่มชั้นการปกป้องสินค้าให้หุ่นยนต์: วิเคราะห์พื้นผิวจากข้อมูล IMU ประเมินความเสี่ยงต่อสินค้า
+ปรับความเร็ว เลือกเส้นทาง และหยุดอย่างปลอดภัยเมื่อข้อมูลไม่น่าเชื่อถือหรือพบเหตุอันตราย
 
-## Dataset ถูกใช้อย่างไร
+> [!IMPORTANT]
+> **สถานะปัจจุบันคือ Software Prototype:** ข้อมูลที่แสดงเป็น `DATASET` หรือ `SIMULATED`
+> ไม่ใช่การวัดสดจากบอร์ดหรือหุ่นยนต์จริง และฉาก Three.js ไม่ใช่ตำแหน่งจริงหรือ SLAM
 
-ชุดข้อมูลไม่ได้ใช้สำหรับ train เพียงอย่างเดียว แต่แบ่งตาม group โดยไม่ให้ทับกัน:
+## ปัญหาที่ต้องการแก้
+
+การขนส่งสินค้าเปราะบางมีความเสี่ยงที่ระบบนำทางทั่วไปมองไม่เห็น:
+
+- เส้นทางที่สั้นที่สุดอาจมีพื้นผิวสั่นสะเทือนสูง
+- สินค้าทั่วไปกับสินค้าเปราะบางไม่ควรใช้ความเร็วและนโยบายเดียวกัน
+- โมเดลที่ไม่มั่นใจไม่ควรสั่งให้หุ่นยนต์เคลื่อนที่ต่อแบบเดาสุ่ม
+- ข้อมูลจากหุ่นยนต์หลายตัวต้องแยกจากกัน ตรวจสอบย้อนหลังได้ และต้องไม่ทำให้ Safety Core ช้าลง
+
+CargoShield AI ไม่ได้แทนระบบนำทาง แต่ทำหน้าที่เป็น **Cargo Protection Layer**
+ระหว่างข้อมูลเซนเซอร์กับคำสั่งเคลื่อนที่
+
+## ระบบทำงานอย่างไร
+
+```mermaid
+flowchart LR
+    A["IMU window<br/>DATASET / ในอนาคต: เซนเซอร์จริง"] --> B["Surface AI<br/>จำแนกพื้นผิว + confidence"]
+    B --> C["Vibration Risk<br/>ประเมินความเสี่ยงต่อสินค้า"]
+    C --> D["Cargo-Aware Safety Core<br/>กฎ deterministic"]
+    D --> E["MOVE"]
+    D --> F["SLOW_DOWN"]
+    D --> G["HOLD_UNCERTAIN"]
+    D --> H["SAFE_STOP"]
+    C --> I["Route Risk Memory<br/>ใช้วางเส้นทางภารกิจถัดไป"]
+    D -. "ไม่รอฐานข้อมูล" .-> J["Fleet Guardian<br/>Historian + Fleet Intelligence"]
+```
+
+ลำดับการตัดสินใจหลัก:
+
+1. โมเดลจำแนกพื้นผิวและรายงานระดับความมั่นใจ
+2. ระบบแปลงผลเป็นความเสี่ยงแรงสั่นต่อสินค้าทั่วไปหรือสินค้าเปราะบาง
+3. Safety Core เลือก `MOVE`, `SLOW_DOWN`, `HOLD_UNCERTAIN` หรือ `SAFE_STOP`
+4. ความเสี่ยงของแต่ละโซนถูกจดจำเพื่อวางเส้นทางใหม่เมื่อเริ่มภารกิจถัดไป
+5. Fleet Guardian รับสำเนาข้อมูลเพื่อดูย้อนหลัง โดยไม่มีสิทธิ์ข้าม Safety Core
+
+## ส่วนประกอบของโปรเจกต์
+
+CargoShield AI เป็นผลิตภัณฑ์เดียว มีสามส่วนอยู่ภายใต้ชื่อนี้:
+
+```text
+CargoShield AI
+├── Mission Protection ........... หน้าหลัก: ภารกิจปกป้องสินค้า
+│   ├── Surface AI ............... จำแนกพื้นผิวจากหน้าต่าง IMU 128 × 6
+│   ├── Cargo Policy ............. นโยบายความเร็วตามประเภทสินค้า
+│   ├── Safety Core .............. ผู้ตัดสินใจเพียงผู้เดียว (deterministic)
+│   └── Route Risk Memory ........ จำความเสี่ยงรายโซนไว้วางเส้นทางรอบหน้า
+│
+├── 3D Mission Demo .............. หน้าจอสาธิต Three.js
+│   └── Dataset Replay ........... วิธีป้อนข้อมูลเมื่อยังไม่มีฮาร์ดแวร์
+│
+└── Fleet Guardian ............... โมดูลติดตามกองหุ่นยนต์
+    ├── Multi-robot Monitoring
+    ├── PostgreSQL Historian
+    ├── Fleet Intelligence
+    └── Read-only Maintenance Copilot
+        └── Hermes integration boundary (ยังไม่เชื่อมต่อ)
+```
+
+**Fleet Guardian เป็นโมดูลภายใต้ CargoShield AI ไม่ใช่ผลิตภัณฑ์แยก**
+และ **Dataset Replay เป็นวิธีสาธิต ไม่ใช่ความสามารถหลักของผลิตภัณฑ์**
+
+### นโยบายความเร็วตามประเภทสินค้า
+
+| ความเสี่ยงแรงสั่น | สินค้าทั่วไป | สินค้าเปราะบาง |
+| --- | --- | --- |
+| low | 100% | 80% |
+| medium | 75% | 45% |
+| high | 50% | 25% |
+
+สินค้าเปราะบางเดินทางช้ากว่าเสมอที่ความเสี่ยงเท่ากัน (`cargo/decision_engine.py`)
+
+| ชั้นระบบ | หน้าที่ | สถานะข้อมูล |
+| --- | --- | --- |
+| **Mission Protection** | Surface AI, confidence gate, cargo policy, Safety Core และ route-risk memory | Dataset Replay |
+| **3D Mission Console** | แสดงหุ่นยนต์ เส้นทาง โซนเสี่ยง การตัดสินใจ และควบคุมเดโม | Visualization จาก state ของ Python Engine |
+| **Fleet Guardian** | แยกสถานะหุ่นยนต์หลายตัว ตรวจข้อมูลผิดปกติ และคงการตัดสินใจแม้ Historian ล่ม | Simulation |
+| **Fleet Historian** | เก็บ telemetry, prediction, event และ mission ใน PostgreSQL ผ่านคิวที่ไม่บล็อก Safety Core | Dataset / Simulation |
+| **Fleet Intelligence** | ดูภาพรวมกองหุ่นยนต์ ประวัติ และหลักฐาน provenance | Dataset / Simulation |
+| **Maintenance Assistant** | ตอบ 7 คำถามบำรุงรักษาจาก SQL แบบ `SELECT` พร้อมแถวหลักฐาน ผ่าน role ที่อ่านได้อย่างเดียว | Dataset / Simulation; **Hermes ยังไม่เชื่อมต่อ** |
+
+## จุดที่ต่างจากเดโมหุ่นยนต์ทั่วไป
+
+- **ปกป้องสินค้า ไม่ใช่แค่พาหุ่นยนต์ไปถึงปลายทาง** — นโยบายเปลี่ยนตามความเปราะบางของสินค้า
+- **ไม่มั่นใจก็ไม่ฝืนเคลื่อนที่** — ผลต่ำกว่า confidence threshold กลายเป็น `HOLD_UNCERTAIN`
+- **เหตุอันตรายต้องให้คนปลด** — `SAFE_STOP` ถูก latch จนผู้ควบคุมสั่ง `manual_resume`
+- **เรียนรู้ความเสี่ยงโดยไม่เปลี่ยนเส้นทางกลางภารกิจ** — เส้นทางคงที่ระหว่างรัน และวางใหม่ในรอบถัดไป
+- **ฐานข้อมูลหรือ Copilot ไม่อยู่ในวงจรตัดสินใจฉุกเฉิน** — Safety Core ทำงานต่อได้เมื่อ Historian ใช้งานไม่ได้
+- **รองรับแนวคิดหลายหุ่นยนต์** — แยก state และตรวจ duplicate, out-of-order, jump และค่าที่ไม่เป็นตัวเลข
+
+## Dataset ใช้ทำอะไร
+
+Dataset ไม่ได้ใช้เพื่อเทรนอย่างเดียว แต่แบ่งตามกลุ่มโดยไม่ให้ข้อมูลทับกัน:
 
 | Split | หน้าที่ |
 | --- | --- |
-| Train | ฝึก RandomForest และหาขอบเขต vibration risk |
-| Validation | เลือก confidence threshold และเป็นแหล่งหน้าต่างสำหรับ Dataset Replay |
-| Test | ประเมินผลสุดท้ายใน `reports/metrics.json` เท่านั้น |
+| Train | ฝึก RandomForest และสร้างขอบเขต vibration risk |
+| Validation | เลือก confidence threshold และเป็นแหล่งข้อมูลสำหรับ Dataset Replay |
+| Test | ประเมินผลสุดท้ายและเขียนผลลง `reports/metrics.json` เท่านั้น |
 
-Dataset Replay เป็นการป้อนข้อมูลที่บันทึกไว้เข้า pipeline ตามลำดับเวลาเพื่อสาธิตการตัดสินใจ
-ไม่ใช่การวัดสด และไม่ใช่ผลประเมินจาก test split
+**Dataset Replay** คือการป้อนหน้าต่าง IMU ที่บันทึกไว้เข้า pipeline ตามลำดับเวลา
+เพื่อสาธิตการตัดสินใจของระบบ ไม่ใช่การวัดสด และไม่ใช่การนำ test split มาเล่นเป็นเดโม
 
-## ติดตั้ง
+ผลบน held-out test split ล่าสุด:
+
+| ตัวชี้วัด | ผล |
+| --- | ---: |
+| Macro F1 | 0.5156 |
+| Weighted F1 | 0.5449 |
+| Confidence threshold | 0.55 |
+| Accuracy ของหน้าต่างที่ระบบยอมตัดสินใจ | 0.7210 |
+| Coverage | 52.8% |
+
+หน้าต่างที่ไม่ผ่าน threshold จะถูกเปลี่ยนเป็น `HOLD_UNCERTAIN` ไม่ถูกนับเป็นการตัดสินใจที่ปลอดภัย
+รายละเอียดและข้อจำกัดของแต่ละคลาสอยู่ใน [`docs/ML_EVALUATION.md`](docs/ML_EVALUATION.md)
+
+## เดโมที่แนะนำ
+
+1. เลือกสินค้า **เปราะบาง** แล้วเริ่ม Dataset Replay
+2. ชี้ให้เห็น Surface AI, confidence, vibration risk และการปรับ speed ratio
+3. กำหนดสิ่งกีดขวางที่ 50 ซม. เพื่อสาธิต `SLOW_DOWN`
+4. กำหนดที่ 20 ซม. เพื่อสาธิต `SAFE_STOP` และการ latch
+5. เปิด Fleet Guardian เพื่อแสดงการแยกหุ่นยนต์ ประวัติ และ provenance
+6. เลื่อนไป **Maintenance Assistant** กดคำถามที่ระบบรองรับ เพื่อแสดงคำตอบพร้อมแถวหลักฐาน
+   และป้าย `READ-ONLY` / `HUMAN APPROVAL REQUIRED` / `Hermes provider: Not connected`
+
+Demo script แบบจับเวลา 60–90 วินาทีอยู่ใน
+[`docs/CARGOSHIELD_PRODUCT_STORY.md`](docs/CARGOSHIELD_PRODUCT_STORY.md)
+
+ข้อความที่ควรใช้กับกรรมการคือ **“นี่คือ pipeline และ safety behavior ที่พิสูจน์ด้วยข้อมูลบันทึกและ simulation”**
+ไม่ใช่ผลจากฮาร์ดแวร์จริง
+
+## เริ่มต้นใช้งาน
+
+### 1. ติดตั้ง
 
 ```powershell
 python -m venv .venv
@@ -42,16 +158,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m playwright install chromium
 ```
 
-ถ้าต้องสร้าง dataset/model artifacts ใหม่:
-
-```powershell
-.\.venv\Scripts\python.exe -m training.prepare_dataset
-.\.venv\Scripts\python.exe -m training.train_baseline
-.\.venv\Scripts\python.exe -m training.select_confidence
-.\.venv\Scripts\python.exe -m training.evaluate_baseline
-```
-
-เริ่ม PostgreSQL Fleet Historian บน loopback:
+### 2. เตรียม PostgreSQL
 
 ```powershell
 docker compose up -d
@@ -60,41 +167,48 @@ docker compose up -d
 
 ค่าการเชื่อมต่ออ่านจาก environment; คัดลอก `.env.example` เป็น `.env` เมื่อต้องการเปลี่ยนค่า
 
-## เปิดระบบ
+### 3. เปิดระบบ
 
 ต้องมี MQTT broker ที่ `127.0.0.1:1883` และ MQTT-over-WebSocket ที่ `127.0.0.1:8883`
-(broker ของ Bitstream Studio ใช้ค่านี้ได้) จากนั้นเปิดแต่ละ service:
 
 ```powershell
-# Engine สำหรับ Dataset Replay ของหุ่นยนต์หนึ่งตัว
+# Python Engine สำหรับภารกิจ Dataset Replay
 .\.venv\Scripts\python.exe -m cargo.mqtt_service
 
 # Fleet Guardian และ History API แบบอ่านอย่างเดียว
 .\.venv\Scripts\python.exe -m cargo.fleet_service
 .\.venv\Scripts\python.exe -m cargo.history_api --port 8099
 
-# หน้าเว็บทั้งสองหน้า
+# หน้าเว็บ
 .\.venv\Scripts\python.exe -m http.server 8080 --bind 127.0.0.1 --directory webapp
 ```
 
-- Dataset Replay 3 มิติ: <http://127.0.0.1:8080/index.html>
-- Fleet Intelligence: <http://127.0.0.1:8080/fleet.html>
+- ภารกิจปกป้องสินค้า (Mission Protection): <http://127.0.0.1:8080/index.html>
+- Fleet Guardian: <http://127.0.0.1:8080/fleet.html>
 
-ปุ่ม **เริ่ม Dataset Replay** ส่ง `{"action":"start"}` ไปที่
-`cargoshield/cargo-robot-01/command` แล้ว replay 10 validation windows ภายในประมาณ 10 วินาที
-Safe Stop จะ latch จนกว่าผู้ควบคุมจะกด `manual_resume`
+ปุ่มเริ่มภารกิจส่ง `{"action":"start"}` ไปที่ `cargoshield/cargo-robot-01/command`
+และ replay 10 validation windows ภายในประมาณ 10 วินาที
 
-## เดโมกองหุ่นยนต์
+### 4. เดโมหลายหุ่นยนต์
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\fleet_scenario.py
 ```
 
-scenario นี้จำลองหุ่นยนต์สามตัวพร้อมกัน: ตัวปกติ, ตัวที่สะสมแรงสั่นและเกิด impact จน Safe Stop,
+scenario จำลองหุ่นยนต์สามตัวพร้อมกัน: ตัวปกติ ตัวที่สะสมแรงสั่น/impact จน Safe Stop
 และตัวที่ส่งข้อมูลผิดปกติ พร้อมตัด PostgreSQL ชั่วคราวเพื่อพิสูจน์ว่า Safety Core ยังตัดสินใจต่อได้
-หลักฐานอยู่ที่ `reports/fleet_scenario_evidence.json`
+หลักฐานถูกเขียนลง `reports/fleet_scenario_evidence.json`
 
-## ตรวจสอบ
+## สร้าง Dataset และโมเดลใหม่
+
+```powershell
+.\.venv\Scripts\python.exe -m training.prepare_dataset
+.\.venv\Scripts\python.exe -m training.train_baseline
+.\.venv\Scripts\python.exe -m training.select_confidence
+.\.venv\Scripts\python.exe -m training.evaluate_baseline
+```
+
+## การตรวจสอบ
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
@@ -106,18 +220,36 @@ scenario นี้จำลองหุ่นยนต์สามตัวพ�
 .\.venv\Scripts\python.exe -m pip_audit -r requirements.txt
 ```
 
-ผลล่าสุดที่ยืนยันบน checkout นี้: **131 tests + 111 subtests**, MQTT E2E **14/14**,
-Fleet Scenario **12/12**, browser verification ผ่านโดยไม่มี console error และ `pip-audit`
-ไม่พบช่องโหว่ที่รู้จัก ผล latency เป็นของ local simulator ไม่ใช่ประสิทธิภาพของบอร์ด
+ผลล่าสุดที่บันทึกไว้ใน checkout นี้: **141 tests + 139 subtests**, MQTT E2E **14/14**,
+Fleet Scenario **12/12**, browser verification ไม่มี console error และ `pip-audit`
+ไม่พบช่องโหว่ที่รู้จัก ตัวเลข latency ทั้งหมดเป็นผลจาก local simulator ไม่ใช่ประสิทธิภาพของบอร์ด
+
+Browser evidence ครอบคลุมสถานะ `IDLE`, `MOVING`, `HOLD_UNCERTAIN`, `SLOW_DOWN`, `SAFE_STOPPED`,
+`COMPLETED`, หน้า Fleet Guardian, Maintenance Assistant, ความละเอียด 1920×1080 และ 1440×900
+รวมถึงโหมด no-WebGL และ reduced-motion — ภาพอยู่ใน `reports/screenshots/`
+อัตราเฟรมที่วัดได้: **26–32 fps** บน headless SwiftShader (software rendering ค่าต่างกันในแต่ละรอบ)
+และ **177 fps** บน GPU จริง (RTX 4050) ทั้งสองค่าเป็นการเรนเดอร์หน้าเว็บ
+ไม่ใช่ประสิทธิภาพการ inference ของบอร์ด
+
+## ขอบเขตที่ยังไม่มี
+
+- ยังไม่มีการอ่านเซนเซอร์สดจากบอร์ดและยังไม่มีผล benchmark บนบอร์ด
+- ยังไม่มีมอเตอร์ การเคลื่อนที่จริง localization, SLAM, กล้อง ไมโครโฟน หรือเซนเซอร์ระยะ
+- ฉาก Three.js เป็น visualization ไม่ใช่ Digital Twin ที่ผูกกับตำแหน่งจริง
+- Maintenance Copilot/Hermes ยังไม่เชื่อมใช้งานจริง และจะต้องคงสิทธิ์แบบ read-only
+- ผล ML ปัจจุบันเป็น baseline และบางคลาสยังจำแนกได้ไม่ดี
+
+ดูรายการข้อจำกัดฉบับเต็มที่ [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md)
 
 ## เอกสารหลัก
 
 | เอกสาร | เนื้อหา |
 | --- | --- |
-| [`docs/FLEET_GUARDIAN_FINAL_REPORT.md`](docs/FLEET_GUARDIAN_FINAL_REPORT.md) | สถานะปัจจุบัน สถาปัตยกรรม หลักฐาน และข้อห้ามในการอ้าง |
-| [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md) | สิ่งที่ระบบยังทำไม่ได้หรือยังไม่ยืนยัน |
-| [`docs/ML_EVALUATION.md`](docs/ML_EVALUATION.md) | วิธีแบ่งข้อมูล ผล test และ confidence threshold |
-| [`docs/HARDWARE_EXPANSION_MATRIX.md`](docs/HARDWARE_EXPANSION_MATRIX.md) | หลักฐานที่ยังขาดก่อนต่อกล้อง ไมค์ ระยะ หรือมอเตอร์ |
+| [`docs/CARGOSHIELD_PRODUCT_STORY.md`](docs/CARGOSHIELD_PRODUCT_STORY.md) | Pitch, demo script, โครงโปสเตอร์ และ claim ที่ใช้ได้/ห้ามใช้ |
+| [`docs/FLEET_GUARDIAN_FINAL_REPORT.md`](docs/FLEET_GUARDIAN_FINAL_REPORT.md) | สถาปัตยกรรม หลักฐาน ผลตรวจ และ claim ที่ห้ามใช้ |
+| [`docs/CARGOSHIELD_ARCHITECTURE.md`](docs/CARGOSHIELD_ARCHITECTURE.md) | โครงสร้าง CargoShield และขอบเขตของแต่ละชั้น |
+| [`docs/ML_EVALUATION.md`](docs/ML_EVALUATION.md) | Data split, held-out metrics และ confidence selection |
+| [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md) | ความสามารถที่ยังไม่มีหรือยังไม่ยืนยัน |
+| [`docs/HARDWARE_EXPANSION_MATRIX.md`](docs/HARDWARE_EXPANSION_MATRIX.md) | หลักฐานที่ต้องมีก่อนเพิ่มกล้อง ไมค์ ระยะ หรือมอเตอร์ |
 | [`docs/HERMES_MAINTENANCE_COPILOT.md`](docs/HERMES_MAINTENANCE_COPILOT.md) | ขอบเขต Copilot แบบอ่านอย่างเดียว |
-| [`docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md`](docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md) | MQTT/Bitstream Sensor Studio และข้อจำกัดของ build |
-| [`docs/FLEET_GUARDIAN_PHASE0_BASELINE.md`](docs/FLEET_GUARDIAN_PHASE0_BASELINE.md) | หลักฐาน baseline ก่อนสร้าง Fleet Guardian (เอกสารประวัติ) |
+| [`docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md`](docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md) | MQTT, Bitstream Sensor Studio และข้อจำกัดของ build |

@@ -21,7 +21,7 @@ from cargo import contracts, db
 from cargo.export import ExportFilters, export
 from cargo.fleet import FleetGuardian, sample
 from cargo.historian import Historian
-from cargo.history_api import Handler, serve
+from cargo.history_api import COPILOT_QUESTIONS, Handler, serve
 from cargo.maintenance import BOUNDARY, MaintenanceContext
 from scripts.fleet_scenario import _current_run_history_complete, _database_rows_for_missions
 
@@ -241,7 +241,10 @@ class HistoryApiTests(unittest.TestCase):
     def setUpClass(cls):
         _truncate()
         _seed()
-        cls.server = serve(port=8098, settings=_owner_settings())
+        # History reads as the owner; the copilot endpoints read as the SELECT-only role, which is
+        # the whole point of keeping the two settings apart.
+        cls.server = serve(port=8098, settings=_owner_settings(),
+                           readonly_settings=_readonly_settings())
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
 
@@ -297,6 +300,59 @@ class HistoryApiTests(unittest.TestCase):
         _status, body = self.get("/api/fleet")
         self.assertEqual({row["robot_id"] for row in body["robots"]},
                          {"robot-alpha", "robot-bravo", "robot-charlie"})
+
+    # ---------- Maintenance Copilot endpoints ----------
+
+    def test_the_copilot_index_states_its_boundary_and_its_provider_truthfully(self):
+        _status, body = self.get("/api/copilot")
+        # No provider is configured anywhere in this repository, and the API must say so rather
+        # than imply a live model wrote the answers.
+        self.assertIsNone(body["provider"])
+        self.assertEqual(body["provider_status"], "not_connected")
+        self.assertEqual(body["analysis_mode"], "deterministic")
+        self.assertTrue(body["human_approval_required"])
+        self.assertEqual({entry["id"] for entry in body["questions"]}, set(COPILOT_QUESTIONS))
+        self.assertIn("publish any MQTT command", body["boundary"]["may_not"])
+        self.assertIn("acknowledge a maintenance finding", body["boundary"]["may_not"])
+
+    def test_every_curated_question_answers_with_its_evidence(self):
+        for question, entry in COPILOT_QUESTIONS.items():
+            path = f"/api/copilot/{question}"
+            if entry["needs_robot"]:
+                path += "?robot_id=robot-bravo"
+            if question == "evidence":
+                path += "&around_ms=1000"
+            with self.subTest(question=question):
+                status, body = self.get(path)
+                self.assertEqual(status, 200)
+                self.assertEqual(body["question_id"], question)
+                self.assertTrue(body["summary"])
+                self.assertIsInstance(body["evidence"], list)
+                self.assertIsNone(body["provider"])
+
+    def test_a_question_outside_the_allowlist_has_no_endpoint(self):
+        for path in ("/api/copilot/_query", "/api/copilot/available", "/api/copilot/drop-table"):
+            with self.subTest(path=path):
+                with self.assertRaises(urllib.error.HTTPError) as caught:
+                    urllib.request.urlopen(f"http://127.0.0.1:8098{path}", timeout=10)
+                self.assertEqual(caught.exception.code, 404)
+
+    def test_a_per_robot_question_refuses_a_missing_or_invalid_robot(self):
+        for path in ("/api/copilot/why-stop", "/api/copilot/checklist",
+                     "/api/copilot/why-stop?robot_id=BAD%20ID"):
+            with self.subTest(path=path):
+                with self.assertRaises(urllib.error.HTTPError) as caught:
+                    urllib.request.urlopen(f"http://127.0.0.1:8098{path}", timeout=10)
+                self.assertEqual(caught.exception.code, 400)
+
+    def test_the_copilot_endpoints_refuse_every_write_method(self):
+        for method in ("POST", "PUT", "PATCH", "DELETE"):
+            with self.subTest(method=method):
+                request = urllib.request.Request("http://127.0.0.1:8098/api/copilot",
+                                                 method=method, data=b"{}")
+                with self.assertRaises(urllib.error.HTTPError) as caught:
+                    urllib.request.urlopen(request, timeout=10)
+                self.assertEqual(caught.exception.code, 405)
 
 
 @SKIP

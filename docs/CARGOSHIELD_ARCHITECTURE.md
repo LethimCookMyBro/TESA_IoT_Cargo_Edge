@@ -1,4 +1,28 @@
-# CargoShield architecture
+# CargoShield AI architecture
+
+## Product hierarchy
+
+One product, three parts. Fleet Guardian is a module inside CargoShield AI, not a second product,
+and Dataset Replay is how data is fed while there is no hardware, not a headline capability.
+
+```text
+CargoShield AI
+├── Mission Protection          webapp/index.html + cargo/{inference,decision_engine,controller}.py
+│   ├── Surface AI              cargo/inference.py
+│   ├── Cargo Policy            cargo/decision_engine.py::CargoPolicy
+│   ├── Safety Core             cargo/decision_engine.py::decide
+│   └── Route Risk Memory       cargo/risk_map.py + cargo/routing.py
+│
+├── 3D Mission Demo             webapp/scene.js
+│   └── Dataset Replay          cargo/sources.py + cargo/mqtt_service.py::DEMO_SEQUENCE
+│
+└── Fleet Guardian              webapp/fleet.html + cargo/fleet_service.py
+    ├── Multi-robot Monitoring  cargo/fleet.py + cargo/health.py
+    ├── PostgreSQL Historian    cargo/historian.py + cargo/db.py
+    ├── Fleet Intelligence      cargo/history_api.py
+    └── Maintenance Copilot     cargo/maintenance.py (read-only)
+        └── Hermes boundary     not connected; see docs/HERMES_MAINTENANCE_COPILOT.md
+```
 
 ## Synchronous safety path
 
@@ -39,6 +63,23 @@ CargoShield services
 - `cargo.historian` drops and counts overflow rather than blocking a safety decision.
 - Browsers never connect directly to PostgreSQL.
 - `cargo.maintenance` has no MQTT publisher or database write path.
+- `cargo.history_api` serves the copilot's curated questions over GET at `/api/copilot/{question}`,
+  reading through the SELECT-only role. The question set is an allowlist
+  (`history_api.COPILOT_QUESTIONS`); a question outside it has no endpoint at all.
+
+## Presentation boundary
+
+The browser renames what Python decided and never decides anything itself:
+
+- `webapp/controls.js::protectionState` maps the engine's `status` to a Cargo Protection State
+  (`PROTECTED`, `SLOWING`, `HOLDING`, `SAFE_STOP`, …). It is a lookup keyed on a published field.
+- `webapp/controls.js::explain` builds the "what is happening now" sentences from published
+  `action`, `risk`, `label`, `confidence`, `speed_ratio` and `reason` only. A field that was not
+  published produces no sentence rather than an invented one.
+- `webapp/controls.js::actionTone` gives `HOLD_UNCERTAIN` its own colour in the 3D stage so an
+  uncertain model is visually distinct from a deliberate slow-down.
+- `tests/test_webapp_visual.py` pins all three against the engine's own status and action sets, so
+  a new engine status cannot silently render blank.
 
 ## Current truth boundary
 

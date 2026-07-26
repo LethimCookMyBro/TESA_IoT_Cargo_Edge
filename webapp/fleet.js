@@ -160,12 +160,136 @@ function renderFleetStatus(status) {
   const ids = robots.map(([robotId]) => robotId);
   if (ids.join('|') !== knownRobots.join('|')) {
     knownRobots = ids;
-    const select = $('series-robot');
-    const previous = select.value;
-    select.replaceChildren(...ids.map((id) => new Option(id, id)));
-    if (ids.includes(previous)) select.value = previous;
+    // Both selectors are filled from the same live roster, so neither can offer a robot the fleet
+    // has never reported.
+    for (const id of ['series-robot', 'copilot-robot']) {
+      const select = $(id);
+      const previous = select.value;
+      select.replaceChildren(...ids.map((robotId) => new Option(robotId, robotId)));
+      if (ids.includes(previous)) select.value = previous;
+    }
     refreshSeries();
   }
+}
+
+/* ---------------- Maintenance Assistant (read-only, deterministic) ---------------- */
+
+/**
+ * Curated questions only. The buttons are built from what `/api/copilot` reports it supports, so
+ * this page cannot ask anything the read-only boundary has not allowlisted, and there is no free
+ * text box to type one into. Every answer is rendered with its evidence rows.
+ */
+let copilotQuestions = [];
+let activeQuestion = null;
+
+function renderCopilotAnswer(node, payload) {
+  const summary = document.createElement('p');
+  summary.className = 'answer-summary';
+  summary.textContent = text(payload.summary);
+
+  const meta = document.createElement('p');
+  meta.className = 'answer-meta';
+  meta.textContent =
+    `คำถาม: ${text(payload.question)} · วิเคราะห์แบบ deterministic (ไม่มีโมเดลภาษา) · `
+    + `หลักฐาน ${(payload.evidence ?? []).length} แถว · สร้างเมื่อ ${clock(payload.generated_ms)}`;
+
+  const rows = payload.evidence ?? [];
+  node.replaceChildren(summary, meta);
+  if (!rows.length) {
+    const empty = document.createElement('p');
+    empty.className = 'answer-empty';
+    empty.textContent = 'ไม่มีแถวหลักฐานสำหรับคำถามนี้ — ระบบจึงไม่สรุปเกินข้อมูลที่มี';
+    node.append(empty);
+    return;
+  }
+  // Columns come from the rows themselves; the API returns fixed SELECT lists, never caller SQL.
+  const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  const head = document.createElement('tr');
+  for (const column of columns) {
+    const heading = document.createElement('th');
+    heading.scope = 'col';
+    heading.textContent = column;
+    head.append(heading);
+  }
+  const thead = document.createElement('thead');
+  thead.append(head);
+
+  const body = document.createElement('tbody');
+  for (const row of rows) {
+    const line = document.createElement('tr');
+    for (const column of columns) {
+      const value = row[column];
+      cell(line, value !== null && typeof value === 'object' ? JSON.stringify(value) : value, { wrap: true });
+    }
+    body.append(line);
+  }
+
+  const table = document.createElement('table');
+  table.className = 'grid';
+  table.append(thead, body);
+
+  const scroll = document.createElement('div');
+  scroll.className = 'table-scroll';
+  scroll.tabIndex = 0;
+  scroll.setAttribute('role', 'region');
+  scroll.setAttribute('aria-label', 'แถวหลักฐานของคำตอบ');
+  scroll.append(table);
+  node.append(scroll);
+}
+
+async function askCopilot(question) {
+  const node = $('copilot-answer');
+  activeQuestion = question.id;
+  for (const button of $('copilot-questions').children) {
+    button.setAttribute('aria-pressed', String(button.dataset.question === question.id));
+  }
+  const robotId = $('copilot-robot').value;
+  if (question.needs_robot && !robotId) {
+    node.replaceChildren(Object.assign(document.createElement('p'), {
+      className: 'answer-empty',
+      textContent: 'คำถามนี้ต้องเลือกหุ่นยนต์ก่อน',
+    }));
+    return;
+  }
+  node.replaceChildren(Object.assign(document.createElement('p'), {
+    className: 'answer-empty', textContent: 'กำลังอ่านข้อมูล…',
+  }));
+  const query = question.needs_robot ? `?robot_id=${encodeURIComponent(robotId)}` : '';
+  try {
+    renderCopilotAnswer(node, await api(`/api/copilot/${question.id}${query}`));
+  } catch (error) {
+    node.replaceChildren(Object.assign(document.createElement('p'), {
+      className: 'answer-empty',
+      textContent: `อ่านข้อมูลไม่สำเร็จ: ${error?.message ?? error} — ความปลอดภัยของหุ่นยนต์ไม่ได้ขึ้นกับผู้ช่วยนี้`,
+    }));
+  }
+}
+
+async function loadCopilot() {
+  let index;
+  try {
+    index = await api('/api/copilot');
+  } catch (error) {
+    $('copilot-answer').replaceChildren(Object.assign(document.createElement('p'), {
+      className: 'answer-empty',
+      textContent: `ผู้ช่วยบำรุงรักษาไม่พร้อมใช้งาน: ${error?.message ?? error}`,
+    }));
+    return;
+  }
+  // The provider line states what the backend actually reports, never an aspiration.
+  $('copilot-provider').textContent = index.provider
+    ? `Provider: ${index.provider}`
+    : 'Hermes provider: Not connected';
+  copilotQuestions = index.questions ?? [];
+  $('copilot-questions').replaceChildren(...copilotQuestions.map((question) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.question = question.id;
+    button.setAttribute('aria-pressed', String(question.id === activeQuestion));
+    button.textContent = question.question_th;
+    button.addEventListener('click', () => askCopilot(question));
+    return button;
+  }));
 }
 
 /* ---------------- history panels ---------------- */
@@ -365,6 +489,11 @@ renderExportCommand();
 
 $('series-robot').addEventListener('change', refreshSeries);
 $('event-severity').addEventListener('change', refreshHistory);
+// Re-asking on a robot change keeps the answer and the selector from disagreeing on screen.
+$('copilot-robot').addEventListener('change', () => {
+  const question = copilotQuestions.find((entry) => entry.id === activeQuestion);
+  if (question?.needs_robot) askCopilot(question);
+});
 
 function setLink(message, tone) {
   $('link-text').textContent = message;
@@ -392,4 +521,6 @@ try {
 }
 
 await refreshHistory();
+// The curated question list is fetched once: it is a static allowlist, not live data.
+await loadCopilot();
 setInterval(refreshHistory, HISTORY_REFRESH_MS);

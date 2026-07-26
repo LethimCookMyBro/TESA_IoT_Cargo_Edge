@@ -27,7 +27,8 @@ The single-robot CargoShield demo is now a multi-robot Fleet Guardian prototype:
 Two things the goal asked for that are **not** delivered, and why:
 - **No Hermes integration.** By instruction, Hermes is not installed until Phases 0–6 pass. The
   boundary it would sit behind exists and is tested; `docs/HERMES_MAINTENANCE_COPILOT.md` is the
-  integration guide.
+  integration guide. *(Superseded in part — see §16: the boundary is now exposed read-only in the
+  UI as the deterministic Maintenance Assistant. Hermes itself remains not connected.)*
 - **No populated hardware expansion matrix.** No board pinout or connector evidence exists in this
   repository, so every candidate module is `unsupported — no pinout evidence`. See §12.
 
@@ -486,3 +487,116 @@ a static server for `webapp/`, then open `index.html` and `fleet.html`.
 - **No Sensor Studio node supports MQTT over TCP.** All four shipped endpoint presets are
   `transport: "ws"`, and the nodes run in a browser webview. The runbook's TCP hedge is removed.
 - **`device/+/devkit-twin/telemetry` is not an existing topic** (§12).
+
+---
+
+## 16. Addendum — Product consolidation round (CargoShield AI)
+
+This section records a later round of work. It **adds to** the report above and does not restate or
+revise the run records in §1–§15, which remain the evidence for their own round.
+
+### 16.1 What changed and why
+
+The system did many things but told a scattered story: the console called itself a "Dataset Replay
+demo centre", Fleet Guardian read as a competing second product, and the three values that actually
+matter (vibration risk, the AI's action, the resulting speed) were buried as small rows in the
+fourth and fifth panels. The work was to make one product legible in five seconds without removing
+any capability that has a user.
+
+| Area | Change |
+| --- | --- |
+| Product naming | One product, **CargoShield AI — ระบบปกป้องสินค้าเปราะบางสำหรับหุ่นยนต์ขนส่ง**. Fleet Guardian is a module under it; Dataset Replay is a demonstration method, not a headline. |
+| Mission Protection UI | A **Cargo Protection State** headline (`PROTECTED` / `SLOWING` / `HOLDING — LOW CONFIDENCE` / `SAFE STOP` / …), then Risk, Action and Speed as three large tiles, then a "เกิดอะไรขึ้นตอนนี้?" panel explaining the decision in sentences. Secondary telemetry moved into an expandable technical block; nothing was deleted. |
+| Provenance | `DATASET REPLAY` / `SIMULATION` promoted from a telemetry row to a permanent badge in the top bar, plus a provenance line in the summary. |
+| 3D stage | Lighting and palette lifted out of near-black; geometry and materials shared across the eight racks; shadow casting narrowed to the shelves; a ground ring now carries the engine's own action (green / amber / violet / red). |
+| Fleet Guardian | Re-ranked to health overview → critical robots and Safe Stops → zone risk → events and missions → trends → data quality → export → Maintenance Assistant. PostgreSQL and the History API moved from headline to a backend-status block. |
+| Maintenance Assistant | The existing read-only `MaintenanceContext` exposed over GET and surfaced in the UI. |
+
+### 16.2 The presentation boundary is tested, not asserted
+
+`webapp/controls.js` gained `protectionState`, `explain` and `actionTone`. All three are pure
+lookups over already-published fields — the browser still decides nothing.
+`tests/test_webapp_visual.py` pins them against the engine: every status in
+`cargo.controller.STATUS_BY_ACTION` (plus the terminal ones) must have a protection state with a
+label **and a glyph**, so colour is never the only signal; every action must have a distinct tone;
+and `explain({status: 'IDLE'})` must return `[]` rather than invent a sentence.
+
+### 16.3 Maintenance Copilot over HTTP
+
+`cargo/history_api.py` gained `GET /api/copilot` and `GET /api/copilot/{question}`, reading through
+the SELECT-only role via a separate `readonly_settings`. The question set is an allowlist
+(`COPILOT_QUESTIONS`); the method behind each question is named in Python and never taken from the
+URL, so `/api/copilot/_query` is a 404 rather than a method call. The UI renders the allowlist as
+buttons and has **no free-text input**. Five new tests cover the index, all seven answers, the
+allowlist, robot-id validation, and refusal of every write verb.
+
+**Hermes remains not connected.** A `hermes-agent` CLI exists on the development workstation, but
+nothing in this repository references, configures or contacts it, and no endpoint or tool contract
+was proven. `/api/copilot` reports `provider: null` and the panel prints
+"Hermes provider: Not connected". Nothing was installed to change that.
+
+### 16.4 Defects found and fixed during this round
+
+1. **Deck row overlapped the control column.** The bottom deck used an `auto` grid row while its
+   timeline grows to 60 entries, so the row expanded past the viewport and covered the entire
+   right-hand column — the Reset button was unclickable. Caught by the browser check, not by eye.
+   Fixed by clamping the row height and letting the lists scroll inside it.
+2. **The five-second answer could scroll away.** Focusing a control scrolled the side column and
+   took the protection headline off screen at 1440×900. The summary is now `position: sticky`.
+3. **`HOLD_UNCERTAIN` broke mid-word** as `HOLD_UN / CERTAIN`. The Thai word and the raw enum are
+   now separated deliberately, and the action tile is the widest of the three.
+4. **Thai output broke the contract test on Windows.** `subprocess.run(..., text=True)` decoded
+   node's stdout with the system ANSI codepage (cp874) and raised `UnicodeDecodeError` on the first
+   Thai byte; the extractor now decodes UTF-8 explicitly.
+5. **Vital values sat at different heights** when a label wrapped; they are now bottom-aligned.
+6. **Red meant two things** in the 3D legend — zone risk and Safe Stop. Zone risk now has a
+   green→amber→red ramp swatch, distinct from the flat red perimeter.
+
+### 16.5 Dead code removed, with proof
+
+Each removal was confirmed by a repository-wide search returning exactly one hit: the definition
+itself. Nothing was removed on suspicion.
+
+| Removed | Where | Proof |
+| --- | --- | --- |
+| `id="tech-details"` | `webapp/index.html` | 1 hit; styled via `details.tech` |
+| `id="backend-details"` | `webapp/fleet.html` | 1 hit; styled via `details.tech` |
+| `id="fleet-summary"` | `webapp/fleet.html` | 1 hit; styled via `.summary` |
+| `id` on five `<table>` elements | `webapp/fleet.html` | 1 hit each; the JS and the check script use the `<tbody>` ids |
+| `.chip-sim` | `webapp/styles.css` | 1 hit; the badge it modified was replaced by `.provenance` |
+| `class="deck-explain"` | `webapp/index.html` | 1 hit; matched no CSS rule anywhere |
+
+Checked and deliberately **kept**: `tone-*`, `spark-*`, `dot-*`, `.toast`, `glyph-*` and every
+`v-*` id are built by template literals (`` $(`v-${key}`) ``, `` `tone-${...}` ``) and look dead
+only to a naive search. `OBSTACLE_POLICY`, `PROTECTION_STATES` and `SURFACE_TINTS` have no browser
+importer but are pinned by `tests/test_webapp_visual.py`. `DISPLAY_PATHS.status` resolves to a
+`#v-status` element that does not exist — the lookup is a guarded no-op, and the entry is kept
+because `test_webapp_controls.py` uses it to assert `status` is present in the state payload.
+
+### 16.6 Verification for this round
+
+| # | Command | Result |
+| --- | --- | --- |
+| 1 | `python -m pytest -q` | **141 passed, 139 subtests** (was 131 + 111; +10 tests) |
+| 2 | `python -m compileall -q cargo training scripts tests` | clean |
+| 3 | `scripts/smoke_mqtt_flow.py --dataset-demo` | COMPLETED, schema `cargoshield.state.v1` |
+| 4 | `scripts/demo_e2e_check.py` | **14/14** |
+| 5 | `scripts/fleet_scenario.py` | **12/12**, 93 rows written, 0 dropped |
+| 6 | `scripts/webapp_ui_check.py` | **passed**, exit 0, zero application console errors |
+
+Browser evidence now covers `IDLE`, `MOVING`, `HOLD_UNCERTAIN`, `SLOW_DOWN`, `SAFE_STOPPED`,
+`COMPLETED`, Fleet Guardian, the Maintenance Assistant, 1920×1080, 1440×900, no-WebGL and
+reduced-motion. `HOLD_UNCERTAIN` is deterministic: `DEMO_SEQUENCE` contains windows at confidence
+0.45 and 0.30, below the selected 0.55 threshold, so every run reaches it.
+
+Frame rate: **26–32 fps** headless on SwiftShader software rendering across four runs (26, 28, 29,
+32), and **177 fps** on an RTX 4050. Both measure web rendering on a workstation and say nothing
+about board inference performance. The headless figure is reported as the observed range rather
+than the best sample.
+
+### 16.7 Contracts confirmed unchanged
+
+MQTT topics, `cargoshield.state.v1` / `.v2` payloads, every command action and its payload shape,
+and all ten pre-existing History API endpoints are byte-for-byte unchanged. The copilot routes are
+additive. `tests/test_webapp_controls.py` still feeds every payload the page can emit into
+`CargoMqttService.handle_command` and asserts the engine accepts it.

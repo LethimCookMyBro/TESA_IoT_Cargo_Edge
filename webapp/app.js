@@ -8,6 +8,7 @@ import { LiveDataClient, DEFAULT_MQTT_WS_URL } from './live-data.browser.js';
 import { createScene } from './scene.js';
 import {
   COMMANDS, CARGO_TYPES, ZONES, DISPLAY_PATHS, read, topics, statusTone, obstacleTone,
+  protectionState, explain,
 } from './controls.js';
 
 const params = new URLSearchParams(location.search);
@@ -46,17 +47,31 @@ function toast(message, bad = false) {
 const CARGO_LABELS = { standard: 'สินค้าทั่วไป', fragile: 'สินค้าเปราะบาง' };
 const SOURCE_PRESENTATION = {
   dataset: {
+    badge: 'DATASET REPLAY',
     label: 'DATASET REPLAY · validation split แยกจาก train/test · ไม่ใช่การวัดสด',
     progress: 'ความคืบหน้าการ Replay',
   },
   simulated: {
+    badge: 'SIMULATION',
     label: 'SIMULATION · ข้อมูลสังเคราะห์ · ไม่ใช่การวัดสด',
     progress: 'ความคืบหน้าสถานการณ์จำลอง',
   },
   hardware: {
+    badge: 'LIVE HARDWARE',
     label: 'LIVE HARDWARE · การวัดสดจากอุปกรณ์',
     progress: 'ความคืบหน้าภารกิจสด',
   },
+};
+
+/** Vibration risk and AI action get a tone class *and* their own word, never colour alone. */
+const RISK_TONE = { low: 'go', medium: 'hold', high: 'stop' };
+const RISK_TEXT = { low: 'ต่ำ (low)', medium: 'ปานกลาง (medium)', high: 'สูง (high)' };
+const ACTION_TONE = { MOVE: 'go', SLOW_DOWN: 'hold', HOLD_UNCERTAIN: 'uncertain', SAFE_STOP: 'stop' };
+// The engine's raw enum stays on screen for the judges, on its own line: `HOLD_UNCERTAIN` does not
+// fit beside a Thai word in this column and was breaking mid-word.
+const ACTION_TEXT = {
+  MOVE: 'เดินทาง\nMOVE', SLOW_DOWN: 'ชะลอ\nSLOW_DOWN',
+  HOLD_UNCERTAIN: 'หยุดรอ\nHOLD_UNCERTAIN', SAFE_STOP: 'หยุดปลอดภัย\nSAFE_STOP',
 };
 $('cargo').append(...CARGO_TYPES.map((value) => new Option(`${CARGO_LABELS[value]} (${value})`, value)));
 for (const select of [$('pickup'), $('destination')]) {
@@ -211,6 +226,26 @@ function renderRisk(riskMap) {
   }));
 }
 
+/** Human wording for the three headline values. Presentation only; the value itself is unchanged. */
+const HEADLINE_TEXT = {
+  cargo_type: (value) => CARGO_LABELS[value] ?? show(value),
+  risk: (value) => RISK_TEXT[value] ?? show(value),
+  action: (value) => ACTION_TEXT[value] ?? show(value),
+  speed_ratio: (value) => (typeof value === 'number' ? `${(value * 100).toFixed(0)}%` : show(value)),
+};
+
+function renderExplain(state) {
+  const lines = explain(state);
+  const list = $('explain');
+  if (!lines.length) {
+    list.replaceChildren(Object.assign(document.createElement('li'), {
+      textContent: 'ยังไม่มีผลการวิเคราะห์ — กด "เริ่ม Dataset Replay" เพื่อเริ่มภารกิจ',
+    }));
+    return;
+  }
+  list.replaceChildren(...lines.map((line) => Object.assign(document.createElement('li'), { textContent: line })));
+}
+
 function render(state) {
   lastStateAt = Date.now();
   tickAge();
@@ -224,7 +259,7 @@ function render(state) {
       element.value = typeof value === 'number' ? value : 0;
       $('progress-value').value = typeof value === 'number' ? `${(value * 100).toFixed(0)}%` : NA;
     } else {
-      element.textContent = key === 'cargo_type' ? (CARGO_LABELS[value] ?? show(value)) : show(value);
+      element.textContent = (HEADLINE_TEXT[key] ?? show)(value);
     }
   }
 
@@ -235,11 +270,26 @@ function render(state) {
   // The raw enum, kept out of the visible text so the label can be translated freely.
   statusNode.dataset.status = show(status);
   statusNode.dataset.states = String(++statesRendered);
+
+  // The headline an operator reads first. `protectionState` only renames what Python decided.
+  const protection = protectionState(state);
+  const stateNode = $('protection-state');
+  stateNode.className = `protection-state tone-${protection.tone}`;
+  stateNode.dataset.protection = protection.key;
+  stateNode.querySelector('use').setAttribute('href', `#glyph-${protection.glyph}`);
+  $('protection-label').textContent = protection.label;
+  $('protection-english').textContent = protection.english;
+
+  $('vital-risk').className = `vital tone-${RISK_TONE[read(state, 'last.risk')] ?? 'idle'}`;
+  $('vital-action').className = `vital tone-${ACTION_TONE[read(state, 'last.decision.action')] ?? 'idle'}`;
+
   const source = read(state, 'source');
   const presentation = SOURCE_PRESENTATION[source];
   $('v-source').textContent = presentation?.label ?? (source ? `${String(source).toUpperCase()} · ที่มาไม่ระบุ` : NA);
+  $('provenance-text').textContent = presentation?.badge ?? (source ? String(source).toUpperCase() : 'SIMULATION');
   $('progress-label').textContent = presentation?.progress ?? 'ความคืบหน้า';
   $('v-error').textContent = state?.error ?? state?.source_diagnostic ?? 'ไม่มี';
+  renderExplain(state);
 
   const distance = read(state, 'obstacle_distance');
   const tone = obstacleTone(distance);

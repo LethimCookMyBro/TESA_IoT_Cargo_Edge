@@ -175,9 +175,36 @@ def probe_fleet_page(browser, url: str, api: str) -> dict:
         evidence["desktop_overflow_px"] = page.evaluate(
             "() => document.documentElement.scrollWidth - document.documentElement.clientWidth")
         evidence["screenshot_desktop"] = snapshot(page, "FLEET_intelligence_1920x1080")
+        evidence["maintenance_assistant"] = probe_maintenance_assistant(page)
+        evidence["console_errors"] = console.errors
         return evidence
     finally:
         context.close()
+
+
+def probe_maintenance_assistant(page) -> dict:
+    """The read-only copilot panel: curated buttons only, and an answer that carries its evidence."""
+    page.wait_for_function("() => document.querySelectorAll('#copilot-questions button').length > 0",
+                           timeout=20000)
+    questions = page.eval_on_selector_all(
+        "#copilot-questions button", "nodes => nodes.map(n => n.dataset.question)")
+    # Ask the fleet-wide question that needs no robot selection, so the answer is deterministic.
+    page.click('#copilot-questions button[data-question="inspection"]')
+    page.wait_for_function("() => document.querySelector('#copilot-answer .answer-summary')", timeout=20000)
+    page.locator("#copilot-answer").scroll_into_view_if_needed()
+    page.wait_for_timeout(300)
+    return {
+        "questions": questions,
+        "provider_line": page.inner_text("#copilot-provider"),
+        "badges": page.inner_text("#copilot-badges"),
+        "answer_summary": page.inner_text("#copilot-answer .answer-summary"),
+        "answer_meta": page.inner_text("#copilot-answer .answer-meta"),
+        "evidence_rows": page.eval_on_selector_all("#copilot-answer tbody tr", "nodes => nodes.length"),
+        # There must be no free-text box: the page can only ask the allowlisted questions.
+        "free_text_inputs": page.eval_on_selector_all(
+            "#copilot-answer input, #copilot-questions input, textarea", "nodes => nodes.length"),
+        "screenshot": snapshot(page, "FLEET_maintenance_assistant"),
+    }
 
 
 def main() -> None:
@@ -261,6 +288,14 @@ def main() -> None:
                 and fleet["horizontal_overflow_px"] <= 0
                 and fleet["desktop_overflow_px"] <= 0
                 and fleet["first_tab_stop"] == "skip-link"
+                # The Maintenance Assistant offers the curated questions only, states its provider
+                # honestly, and cites evidence rows rather than asserting a conclusion.
+                and len(fleet["maintenance_assistant"]["questions"]) == 7
+                and "Not connected" in fleet["maintenance_assistant"]["provider_line"]
+                and "READ-ONLY" in fleet["maintenance_assistant"]["badges"]
+                and "HUMAN APPROVAL REQUIRED" in fleet["maintenance_assistant"]["badges"]
+                and fleet["maintenance_assistant"]["evidence_rows"] >= 1
+                and fleet["maintenance_assistant"]["free_text_inputs"] == 0
             )
         except Exception as exc:  # a failed demo rehearsal is evidence too
             evidence["failure"] = {"error": f"{type(exc).__name__}: {exc}", "screenshot": snapshot(page, "FAILURE"),
@@ -282,8 +317,22 @@ def run_sequence(page, evidence: dict, step, console: Console) -> None:
         for selector, value in (("#cargo", "standard"), ("#pickup", "A1"), ("#destination", "C2")):
             page.select_option(selector, value)
             page.wait_for_timeout(400)
-        step("reset", lambda: page.click('button[data-cmd="reset"]'), "IDLE")
+        step("reset", lambda: page.click('button[data-cmd="reset"]'), "IDLE", shot="IDLE")
         step("start", lambda: page.click('button[data-cmd="start"]'), "MOVING", "SLOWING", "HOLDING", shot="MOVING")
+        # DEMO_SEQUENCE deliberately contains windows below the selected confidence threshold, so
+        # the engine reaches HOLD_UNCERTAIN inside every run. Waiting for it here records the
+        # "the model is not sure, so it stops rather than guessing" state as evidence.
+        step("hold on low confidence", lambda: None, "HOLDING",
+             timeout=MISSION_COMPLETION_TIMEOUT_S, shot="HOLD_UNCERTAIN")
+        evidence["hold_uncertain"] = {
+            "protection_state": page.get_attribute("#protection-state", "data-protection"),
+            "protection_label": page.inner_text("#protection-label"),
+            "action": page.inner_text("#v-action"),
+            # Secondary telemetry lives in the collapsed "technical details" block, which renders no
+            # inner_text; text_content reads it without forcing the panel open for a screenshot.
+            "confidence": page.text_content("#v-confidence"),
+            "explanation": page.inner_text("#explain"),
+        }
         step("run to completion", lambda: None, "COMPLETED",
              timeout=MISSION_COMPLETION_TIMEOUT_S, shot="COMPLETED")
 
@@ -319,7 +368,7 @@ def run_sequence(page, evidence: dict, step, console: Console) -> None:
         evidence["after_clear"] = {
             "obstacle": page.inner_text("#v-obstacle_distance"),
             "status": status(page),
-            "confidence_of_last_window": page.inner_text("#v-confidence"),
+            "confidence_of_last_window": page.text_content("#v-confidence"),
             "action": page.inner_text("#v-action"),
         }
 
@@ -373,6 +422,12 @@ def run_sequence(page, evidence: dict, step, console: Console) -> None:
             and evidence["webgl"]["canvas_visible"]
             and not evidence["webgl"]["fallback_shown"]
             and evidence["laptop_viewport"]["horizontal_overflow_px"] <= 0
+            # Every mandated state must have been photographed, not merely reached.
+            and {"IDLE", "MOVING", "HOLD_UNCERTAIN", "SLOW_DOWN", "SAFE_STOPPED", "COMPLETED"}
+                <= set(evidence["screenshots"])
+            # The headline is a Cargo Protection State the engine's own status produced.
+            and evidence["hold_uncertain"]["protection_state"] == "HOLDING"
+            and evidence["hold_uncertain"]["explanation"].strip() != ""
         )
 
 
