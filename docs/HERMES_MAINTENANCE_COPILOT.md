@@ -67,9 +67,10 @@ Do this only after Phases 0–6 pass independently, which they do as of
 
 ## Latency
 
-Hermes latency is **not** part of the real-time safety budget. By the time anything reads this
+Hermes latency is **not** part of the synchronous safety budget. By the time anything reads this
 boundary, the deterministic Safety Core has already decided and acted — measured at
-p50 0.28 ms / p95 0.56 ms ingest-to-decision in the local simulator. Explanations may arrive
+p50 0.1574 ms / p95 0.3140 ms ingest-to-decision in the latest local simulator evidence.
+Explanations may arrive
 seconds later without any safety consequence.
 
 ## OpenClaw

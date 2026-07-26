@@ -2,7 +2,8 @@
 
 อัปเดตจากคู่มือ Hackathon และการตรวจ Bitstream Studio ในเครื่อง วันที่ 16 กรกฎาคม 2026
 
-เอกสารต้นทาง: [TESAIoT-Secure-Edge-AI-Hackathon-2026.pdf](/C:/Users/User/Downloads/TESAIoT-Secure-Edge-AI-Hackathon-2026.pdf)
+เอกสารต้นทาง: `TESAIoT-Secure-Edge-AI-Hackathon-2026.pdf` (ไฟล์ต้นทางอยู่นอก repository
+จึงไม่ใส่ลิงก์ local ที่เปิดได้เฉพาะเครื่องเดิม)
 
 ## 1. โจทย์การแข่งขัน
 

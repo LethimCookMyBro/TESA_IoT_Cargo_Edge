@@ -1,13 +1,49 @@
 # CargoShield architecture
 
+## Synchronous safety path
+
 ```text
-Dataset window
-  -> telemetry validation / replay source
-  -> 128x6 feature extraction -> local RandomForest
-  -> vibration band -> deterministic safety decision
-  -> named-zone risk memory + demo route selection
-  -> local MQTT state
-  -> Bitstream Sensor Studio dashboard
+DATASET / SIMULATED telemetry
+        ↓
+contract validation + sequence gate
+        ↓
+per-robot health checks
+        ↓
+48 features from a 128 × 6 IMU window
+        ↓
+local RandomForest + confidence gate
+        ↓
+deterministic cargo / obstacle policy
+        ↓
+robot-scoped state + event
 ```
 
-Dataset replay sends real stored windows to the model. Live BMI270 inference stays disabled until its units, calibration, sampling rate, timestamp, and 128-sample window are verified. The named zone and obstacle source are supplied by the demo; this is neither SLAM nor autonomous obstacle avoidance.
+The Python Safety Core owns every `MOVE`, `SLOW_DOWN`, `HOLD_UNCERTAIN`, and `SAFE_STOP`
+decision. PostgreSQL, web UIs, Sensor Studio, and a future agent are outside this path and cannot
+delay or override it.
+
+## Operational and history paths
+
+```text
+CargoShield services
+  ├─ MQTT retained state ──► Three.js Dataset Replay console
+  │                       └─► optional Sensor Studio state viewer
+  ├─ MQTT fleet state/events
+  └─ bounded historian queue ──► PostgreSQL ──► read-only History API
+                                                └─► Fleet Intelligence
+                                                └─► read-only MaintenanceContext
+```
+
+- `cargo.mqtt_service` runs the single-robot validation-window replay.
+- `cargo.fleet_service` accepts versioned robot-scoped fleet telemetry.
+- `cargo.historian` drops and counts overflow rather than blocking a safety decision.
+- Browsers never connect directly to PostgreSQL.
+- `cargo.maintenance` has no MQTT publisher or database write path.
+
+## Current truth boundary
+
+Dataset Replay feeds real stored CareerCon validation windows to the model, but it is not a live
+board measurement. Fleet telemetry, named zones, obstacle distance, and 3D movement are simulated.
+Live BMI270 inference remains disabled until units, calibration, sampling rate, timestamps, and
+128-sample compatibility are verified. The project does not claim SLAM, physical navigation,
+certified stopping distance, or board inference performance.

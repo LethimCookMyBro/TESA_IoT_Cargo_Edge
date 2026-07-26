@@ -16,7 +16,8 @@
 - เลือกเส้นทางที่เหมาะสม
 - จดจำพื้นที่เสี่ยง
 - ชะลอ หยุดรอ หรือหยุดฉุกเฉิน
-- แสดงผลผ่าน 3D Operator Console ใน `webapp/` *(เสร็จแล้ว)* และ Dashboard บน Sensor Studio *(เป้าหมาย ยังไม่เสร็จ)*
+- แสดงผลผ่าน 3D Dataset Replay Console และ Fleet Intelligence ใน `webapp/` *(เสร็จแล้ว)*
+  พร้อมรองรับ Sensor Studio state viewer แบบเสริม
 
 ---
 
@@ -176,9 +177,10 @@ Obstacle distance = 20
 
 ระบบใช้ข้อมูล IMU เพื่อจำแนกลักษณะพื้นผิวหรือแรงสั่นสะเทือน
 
-ตัวอย่างคลาสจาก Dataset Demo:
+ตัวอย่างคลาสจาก Dataset Replay:
 
-- `hard_tiles_large_space`
+- `carpet`
+- `concrete`
 - `hard_tiles`
 - `tiled`
 - `soft_pvc`
@@ -251,7 +253,7 @@ speed_ratio = 0.0
 
 ## สิ่งที่ทำเสร็จแล้ว
 
-- Dataset Demo ใช้งานได้โดยไม่ต้องมีบอร์ด
+- Dataset Replay ใช้งานได้โดยไม่ต้องมีบอร์ด
 - โมเดล AI ทำ inference ได้
 - Cargo policy สำหรับ `standard` และ `fragile` ทำงาน
 - Route planning ทำงาน
@@ -318,11 +320,11 @@ Path สำหรับ Dashboard:
 ```text
 status = MOVING
 zone = A1
-label = hard_tiles_large_space
-confidence = 0.705
+label = carpet
+confidence = 0.580
 risk = low
 action = MOVE
-speed_ratio = 0.8      (fragile; standard คืน 1.0 สำหรับหน้าต่างเดียวกัน)
+speed_ratio = 1.0      (standard; fragile คืน 0.8 สำหรับหน้าต่างเดียวกัน)
 progress = 0.1
 ```
 
@@ -330,9 +332,10 @@ State ปกติถูก retain ส่วน `error` และ `source_diagno
 
 ---
 
-## สิ่งที่ยังเหลือ
+## งานเสริมที่ยังเหลือใน Sensor Studio
 
-งานหลักที่ยังไม่เสร็จคือสร้าง Visual Flow และ Dashboard ใน Sensor Studio
+ระบบหลักและหน้าเว็บสาธิตทำงานแล้ว งานที่ยังเหลือใน Sensor Studio เป็น state viewer เสริม
+ไม่ใช่ blocker ของ Dataset Replay Console หรือ Fleet Intelligence
 
 ### Flow ขั้นต่ำ
 
@@ -345,7 +348,7 @@ MQTT Subscriber
 
 ```text
 Host: 127.0.0.1
-Port: 1883
+Port: 8883 (WebSocket, path `/`)
 Topic: cargoshield/cargo-robot-01/state
 ```
 
@@ -436,7 +439,6 @@ visual-flow/cargoshield-edge.trn-flow-preset.json
 - Route Cost เป็น Prototype Logic
 - Live AI จาก BMI270 ยังไม่เปิดใช้
 - ยังไม่ได้ยืนยันแกน หน่วย Sampling Rate Timestamp และ Window ให้ตรงกับ Dataset
-- 3D Digital Twin ยังไม่ได้เชื่อมกับ State จริง
 - Secure Edge เช่น mTLS, Device Identity, OPTIGA Trust M, Secure Boot และ Protected Update ยังเป็นแผนต่อยอด
 
 ---
@@ -452,16 +454,17 @@ CargoShield Edge ไม่ได้เป็นเพียงระบบตร
 - จดจำพื้นที่เสี่ยง
 - ใช้ข้อมูลเดิมช่วยวางเส้นทาง
 - สื่อสารผ่าน MQTT
-- แสดงผลผ่าน 3D Operator Console ใน `webapp/` *(เสร็จแล้ว)* และ Dashboard บน Sensor Studio *(เป้าหมาย ยังไม่เสร็จ)*
+- แสดงผลผ่าน 3D Dataset Replay Console และ Fleet Intelligence ใน `webapp/` *(เสร็จแล้ว)*
 - รองรับการต่อยอดสู่ Secure Edge AI
 
 ---
 
 ## คำอธิบายแบบสั้น
 
-> CargoShield Edge คือ Prototype ระบบ AI สำหรับหุ่นยนต์ขนส่งสินค้า ปัจจุบันใช้ IMU windows ที่บันทึกไว้จาก validation split มา Replay เข้าโมเดล แล้วเผยแพร่ผลของแต่ละ window ผ่าน MQTT ขณะ Replay เพื่อให้ Dashboard และ Digital Twin แสดงการตัดสินใจ ระบบยังไม่ได้วัดเซนเซอร์สดจากหุ่นยนต์จริง
+> CargoShield Edge คือ Prototype ระบบ AI สำหรับหุ่นยนต์ขนส่งสินค้า ปัจจุบันใช้ IMU windows ที่บันทึกไว้จาก validation split มา Replay เข้าโมเดล แล้วเผยแพร่ผลของแต่ละ window ผ่าน MQTT ให้ 3D Dataset Replay Console และ Fleet Intelligence แสดงการตัดสินใจ ระบบยังไม่ได้วัดเซนเซอร์สดจากหุ่นยนต์จริง
 
-Dashboard และ Digital Twin เป็นเป้าหมายที่ยังต้องสร้าง ตอนนี้มีเฉพาะฝั่ง MQTT ที่ส่ง State ครบทุก Path แล้ว
+หน้าเว็บ 3 มิติและ Fleet Intelligence ทำงานแล้ว ส่วน Sensor Studio 0.1.9 รองรับได้เพียง
+subscriber/state viewer เพราะ dashboard และ scene category ถูกปิดใน build ที่ติดตั้ง
 
 ---
 
@@ -469,7 +472,7 @@ Dashboard และ Digital Twin เป็นเป้าหมายที่�
 
 ```text
 CargoShield Engine       : ทำงานแล้ว
-Dataset Demo             : ทำงานแล้ว
+Dataset Replay           : ทำงานแล้ว (validation-only ไม่ใช่การวัดสด)
 Surface AI               : ทำงานแล้ว
 Cargo Policy             : ทำงานแล้ว
 Route / Risk Map         : ทำงานแล้ว
@@ -481,8 +484,8 @@ Demo Replay              : ทำงานแล้ว (10 หน้าต่า
 End-to-End MQTT          : ตรวจผ่านแล้ว 14/14 (reports/demo_e2e_evidence.json)
 Automated Tests          : 131 passed, 111 subtests
 3D Operator Console      : ทำงานแล้ว ตรวจในเบราว์เซอร์จริงแล้ว (reports/webapp_ui_evidence.json)
-Sensor Studio Dashboard  : ยังต้องสร้างด้วยมือ (เป้าหมายถัดไป)
-Visual Flow Export       : ยังไม่มี ต้องคลิก Export ใน Studio (เป้าหมายถัดไป)
+Sensor Studio State View : ยังสร้าง/Export ด้วยมือได้เป็นงานเสริม
+Visual Flow Export       : ยังไม่มี ต้องคลิก Export ใน Studio
 Digital Twin บน Studio    : สร้างไม่ได้ใน build นี้ ใช้ webapp/scene.js แทน
 Live BMI270 Inference    : ยังไม่เปิด
 Secure Edge Deployment   : แผนต่อยอด
@@ -490,4 +493,6 @@ Secure Edge Deployment   : แผนต่อยอด
 
 ## เป้าหมายถัดไป
 
-สร้าง Visual Flow ใน Sensor Studio ให้รับ State จาก Python แสดง Dashboard ส่งคำสั่งกลับไปยัง CargoShield Engine และ Export เป็นไฟล์ Flow จริงสำหรับใช้สาธิตต่อกรรมการ
+เป้าหมายหลักถัดไปคือรับเอกสาร pinout/connector ของบอร์ดและเก็บหน้าต่าง BMI270 จริงให้ตรงกับ
+schema ของโมเดล ก่อนเปิด Live Inference หรือต่อ range sensor และ motor ส่วน Sensor Studio
+state viewer สามารถสร้างและ Export เพิ่มภายหลังได้ แต่ build นี้ส่งคำสั่งและทำ 3D บน canvas ไม่ได้

@@ -409,7 +409,7 @@ What it demonstrates, all asserted in `reports/fleet_scenario_evidence.json`:
    retained `cargoshield/fleet/status` published by the same guardian.
 8. **A provenance-rich export** — `python -m cargo.export --format jsonl`.
 9. **PostgreSQL unavailable while safety continues** — `safety_core_survived_database_outage`.
-10. **A read-only explanation outside the real-time path** — `python -m cargo.maintenance`.
+10. **A read-only explanation outside the synchronous safety path** — `python -m cargo.maintenance`.
 
 To drive the two UI surfaces, add `python -m cargo.mqtt_service`, `python -m cargo.history_api`, and
 a static server for `webapp/`, then open `index.html` and `fleet.html`.

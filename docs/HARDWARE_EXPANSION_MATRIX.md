@@ -8,7 +8,7 @@ on speculation.
 
 **No board pinout, connector diagram, or voltage/current budget exists in this repository.**
 
-Searches performed across the whole checkout (93 tracked files):
+Searches performed across the whole checkout:
 
 - no schematic, pinout table, connector designator, or expansion-header document of any kind;
 - `note_TESA/คู่มือเทคนิคผู้เข้าแข่งขัน-TESAIoT2026.md` §2 lists on-board components only — dual

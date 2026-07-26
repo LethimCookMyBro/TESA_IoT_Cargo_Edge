@@ -14,15 +14,19 @@ Start `cargo.mqtt_service` first. It makes the Python CargoShield engine the sol
 
 ## Verified state field paths
 
-Verified from `cargoshield/cargo-robot-01/state` on 2026-07-25 against the running service, its regression tests, and the end-to-end sweep recorded in `reports/demo_e2e_evidence.json`. Values come from the ten-window **curated dataset demonstration sequence** (`cargo.mqtt_service.DEMO_SEQUENCE`), which is a fixed set of real stored windows chosen for coverage — it is a demonstration, not an evaluation result; held-out metrics live only in `reports/metrics.json`. Bind Studio displays to these **exact** paths. The convenient short names used in planning notes (`mission_state`, `surface_class`, `safety_action`, …) are not keys in the payload; the real paths are below.
+Verified from `cargoshield/cargo-robot-01/state` on 2026-07-26 against the current service,
+regression tests, and `reports/demo_e2e_evidence.json`. Values come from ten curated validation
+windows that are disjoint from train and held-out test. This is Dataset Replay, not live telemetry
+or an evaluation result. Bind Studio displays to these **exact** paths. Convenient short names used
+in planning notes (`mission_state`, `surface_class`, `safety_action`, …) are not payload keys.
 
 | Display intent | Real JSON path | Verified values |
 |---|---|---|
 | Mission state | `status` | `IDLE`, `READY`, `MOVING`, `SLOWING`, `HOLDING`, `PAUSED`, `SAFE_STOPPED`, `COMPLETED`, `ERROR` |
 | Cargo type | `cargo_type` | `standard`, `fragile` |
-| Surface class | `last.label` | `hard_tiles_large_space`, `hard_tiles`, `tiled`, `soft_pvc` |
-| Confidence | `last.confidence` | `0.705`, `0.620`, `0.326`, `0.212` |
-| Vibration score | `last.vibration_score` | `1.828` |
+| Surface class | `last.label` | `carpet`, `soft_pvc`, `concrete`, `hard_tiles`, `tiled` |
+| Confidence | `last.confidence` | current replay spans about `0.300`–`0.704` |
+| Vibration score | `last.vibration_score` | current replay spans about `0.388`–`6.307` |
 | Vibration risk | `last.risk` | `low`, `medium`, `high` (`last.vibration_risk` remains the source field) |
 | Speed ratio | `last.decision.speed_ratio` | `0.8` fragile/low, `0.5` warning region, `0.0` stop/hold |
 | Safety action | `last.decision.action` | `MOVE`, `SLOW_DOWN`, `SAFE_STOP`, `HOLD_UNCERTAIN` |
@@ -30,11 +34,11 @@ Verified from `cargoshield/cargo-robot-01/state` on 2026-07-25 against the runni
 | Manual-resume latch | `last.decision.manual_resume_required` | `true` after a safe stop |
 | Current zone | `last.zone` | `A1`, `A2`, `B1`, `B2`, `C1`, `C2` (walks the planned route) |
 | Progress | `last.progress` | `0.1`, `0.2`, … `1.0` (ten curated windows) |
-| Inference time | `last.inference_ms` | `58.1` |
-| Route | `route.nodes`, `route.cost`, `route.reason` | `["A1","B1","C1","C2"]`, `1.688`, `stability-first; …` |
+| Inference time | `last.inference_ms` | runtime-dependent local Python timing; not board performance |
+| Route | `route.nodes`, `route.cost`, `route.reason` | fresh standard run: `["A1","A2","B2","C2"]`, `3.0`, `shortest-first; …` |
 | Obstacle | `obstacle_distance` | `null`, `20`, `50` |
-| Risk map | `risk_map.<zone>.score` / `.observations` / `.surface` / `.updated_ms` | `A1.score = 0.596`, `observations = 3`, `surface = hard_tiles` |
-| Event log | `events[].message` | `prediction soft_pvc (0.51); MOVE` |
+| Risk map | `risk_map.<zone>.score` / `.observations` / `.surface` / `.updated_ms` | values accumulate during replay; use the published object |
+| Event log | `events[].message` | prediction/action messages from the current replay |
 | Envelope | `schema`, `device_id` | `cargoshield.state.v1`, `cargo-robot-01` |
 | Error / diagnostic | `error`, `source_diagnostic` | present only on the failing message |
 
