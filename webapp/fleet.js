@@ -9,7 +9,11 @@
 import { LiveDataClient, DEFAULT_MQTT_WS_URL } from './live-data.browser.js';
 
 const params = new URLSearchParams(location.search);
-const url = params.get('url') ?? DEFAULT_MQTT_WS_URL;
+const isLocalHost = ['localhost', '127.0.0.1'].includes(location.hostname);
+const defaultUrl = isLocalHost
+  ? DEFAULT_MQTT_WS_URL
+  : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/mqtt`;
+const url = params.get('url') ?? defaultUrl;
 const apiBase = (params.get('api') ?? location.origin).replace(/\/$/, '');
 const mqttDisabled = params.get('mqtt') === 'off';
 
@@ -494,7 +498,7 @@ async function downloadCsv(kind) {
 async function refreshHistory() {
   try {
     const health = await api('/api/health');
-    setApiStatus(Boolean(health.reachable), health.reachable ? text(health.database) : text(health.reason));
+    setApiStatus(Boolean(health.reachable), health.reachable ? 'History พร้อมใช้งาน' : text(health.reason));
     if (!health.reachable) {
       showHistoryUnavailable(text(health.reason));
       return;

@@ -18,6 +18,7 @@ python3 -m cargo.mqtt_service &
 if ! python3 -m cargo.db; then
     echo "History database unavailable; serving the read-only API in degraded mode." >&2
 fi
+python3 -m cargo.fleet_service &
 python3 -m cargo.history_api --host 127.0.0.1 --port 8099 &
 
 envsubst '${PORT}' < /app/deploy/nginx.conf.template > /etc/nginx/sites-enabled/default

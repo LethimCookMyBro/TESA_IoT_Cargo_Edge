@@ -40,6 +40,16 @@ class FleetUiContractTests(unittest.TestCase):
         self.assertIn("URL.createObjectURL", JS)
         self.assertNotIn("alert(", JS)
 
+    def test_production_uses_the_same_origin_mqtt_proxy_without_exposing_db_details(self):
+        self.assertIn("const isLocalHost", JS)
+        self.assertIn("${location.host}/mqtt", JS)
+        self.assertNotIn("text(health.database)", JS)
+        self.assertIn("History พร้อมใช้งาน", JS)
+
+    def test_deployment_starts_the_fleet_telemetry_consumer(self):
+        start = (ROOT / "deploy" / "start.sh").read_text(encoding="utf-8")
+        self.assertIn("python3 -m cargo.fleet_service &", start)
+
 
 if __name__ == "__main__":
     unittest.main()
