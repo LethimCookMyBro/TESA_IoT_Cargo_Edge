@@ -15,6 +15,7 @@ for _ in range(30):
 "
 
 python3 -m cargo.mqtt_service &
+python3 -m cargo.history_api --host 127.0.0.1 --port 8099 &
 
 envsubst '${PORT}' < /app/deploy/nginx.conf.template > /etc/nginx/sites-enabled/default
 exec nginx -g 'daemon off;'

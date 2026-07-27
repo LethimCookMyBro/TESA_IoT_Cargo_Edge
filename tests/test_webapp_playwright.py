@@ -120,7 +120,7 @@ class FleetPlaywrightTests(unittest.TestCase):
         )
         self.page.on("pageerror", lambda error: self.console_errors.append(str(error)))
         self.api_available = True
-        self.page.route("http://127.0.0.1:8099/**", self.route_api)
+        self.page.route(f"{self.base}/api/**", self.route_api)
 
     def tearDown(self):
         self.context.close()

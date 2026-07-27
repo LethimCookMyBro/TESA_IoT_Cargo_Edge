@@ -10,7 +10,7 @@ import { LiveDataClient, DEFAULT_MQTT_WS_URL } from './live-data.browser.js';
 
 const params = new URLSearchParams(location.search);
 const url = params.get('url') ?? DEFAULT_MQTT_WS_URL;
-const apiBase = (params.get('api') ?? 'http://127.0.0.1:8099').replace(/\/$/, '');
+const apiBase = (params.get('api') ?? location.origin).replace(/\/$/, '');
 const mqttDisabled = params.get('mqtt') === 'off';
 
 const FLEET_STATUS_TOPIC = 'cargoshield/fleet/status';
