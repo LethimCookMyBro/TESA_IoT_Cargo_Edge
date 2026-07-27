@@ -24,8 +24,8 @@ CargoShield AI จึงเพิ่มชั้นการปกป้อง�
 > [!NOTE]
 > ภาพนี้เป็น **Concept Render** เพื่อสื่อรูปลักษณ์เป้าหมายของหุ่นยนต์ขนส่ง ชุดตรวจจับ และกล่องสินค้า
 > ไม่ใช่ภาพฮาร์ดแวร์ต้นแบบที่สร้างเสร็จแล้ว ระบบใน repository นี้ยังเป็น Software Prototype
-> ส่วน workflow ตั้งแต่ข้อมูล IMU ไปจนถึง Safety Core, Route Risk Memory และ Fleet Guardian แสดงในหัวข้อ
-> [ระบบทำงานอย่างไร](#ระบบทำงานอย่างไร)
+> แผนภาพแยกสิ่งที่พิสูจน์แล้วออกจากแผนที่ต้องใช้บอร์ดจริงอยู่ในหัวข้อ
+> [สถาปัตยกรรมระบบ TESAIoT](#สถาปัตยกรรมระบบ-tesaiot)
 
 ## วิดีโอแนะนำโปรแกรม (2 นาที)
 
@@ -49,18 +49,16 @@ CargoShield AI จึงเพิ่มชั้นการปกป้อง�
 CargoShield AI ไม่ได้แทนระบบนำทาง แต่ทำหน้าที่เป็น **Cargo Protection Layer**
 ระหว่างข้อมูลเซนเซอร์กับคำสั่งเคลื่อนที่
 
-## ระบบทำงานอย่างไร
+## สถาปัตยกรรมระบบ TESAIoT
 
-```text
-IMU window (DATASET / ในอนาคต: เซนเซอร์จริง)
-  → Surface AI (จำแนกพื้นผิว + confidence)
-  → Vibration Risk (ประเมินความเสี่ยงต่อสินค้า)
-  → Cargo-Aware Safety Core (กฎ deterministic)
-      ├─ MOVE / SLOW_DOWN / HOLD_UNCERTAIN / SAFE_STOP
-      └─ Fleet Guardian (Historian + Fleet Intelligence; ไม่รอฐานข้อมูล)
+![แผนภาพสถาปัตยกรรม CargoShield AI แยก Software Prototype ที่พิสูจน์แล้วจากแผน PSoC Edge E84 ที่ต้องพิสูจน์บนบอร์ด](docs/assets/tesaiot-system-architecture.svg)
 
-Vibration Risk → Route Risk Memory → วางเส้นทางภารกิจถัดไป
-```
+| เกณฑ์ TESAIoT | สถานะที่เอกสารนี้อ้างได้ |
+| --- | --- |
+| PSoC Edge E84 และเซนเซอร์บนบอร์ด | **PROPOSED** — ต้องเก็บข้อมูลจริง ตรวจหน่วย แกน อัตราสุ่ม และ calibration ก่อนเปิด live inference |
+| Edge AI | **CURRENT** — Python baseline ใช้ Dataset Replay; **PROPOSED** สำหรับการ deploy บนบอร์ด |
+| MQTT / Cloud / Sensor Studio | **CURRENT** — MQTT ภายในเครื่องและเว็บ console; **PROPOSED** สำหรับ device credentials, TESAIoT cloud และ Sensor Studio evidence |
+| Secure Edge | **PROPOSED** — ต้องพิสูจน์ root of trust, mTLS, Secure Boot และ Protected Update กับบอร์ดก่อนกล่าวว่าใช้งานได้ |
 
 ลำดับการตัดสินใจหลัก:
 
@@ -240,8 +238,8 @@ scenario จำลองหุ่นยนต์สามตัวพร้อ�
 .\.venv\Scripts\python.exe -m pip_audit -r requirements.txt
 ```
 
-ผลที่ตรวจซ้ำบน commit `6a9153d`: **177 tests + 174 subtests**, `compileall` ผ่าน และ
-`pip-audit` ไม่พบช่องโหว่ที่รู้จัก ส่วนหลักฐาน end-to-end ที่เก็บใน repository ล่าสุดคือ
+ผลที่ตรวจซ้ำล่าสุด: **154 passed, 32 skipped, 103 subtests**, `compileall` ผ่าน
+ส่วนหลักฐาน end-to-end ที่เก็บใน repository ล่าสุดคือ
 MQTT E2E **14/14**, Fleet Scenario **12/12** และ browser verification ไม่มี console error
 ตัวเลข latency ทั้งหมดเป็นผลจาก local simulator ไม่ใช่ประสิทธิภาพของบอร์ด
 

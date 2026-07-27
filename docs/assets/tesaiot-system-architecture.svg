@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040" role="img" aria-labelledby="title desc">
+  <title id="title">CargoShield AI TESAIoT system architecture</title>
+  <desc id="desc">A two-column architecture diagram. The left column is the verified dataset and simulation software path. The right column is the proposed PSoC Edge E84 board path, clearly marked as requiring board verification.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#63e6be"/>
+    </marker>
+    <style>
+      .bg { fill: #09111e; }
+      .panel { fill: #101d31; stroke-width: 2; }
+      .verified { stroke: #36d399; }
+      .proposed { stroke: #a78bfa; stroke-dasharray: 10 8; }
+      .box { fill: #16263c; stroke: #34506f; stroke-width: 1.5; }
+      .box-proposed { fill: #201c3a; stroke: #8b7bd8; stroke-width: 1.5; }
+      .title { fill: #f8fafc; font: 700 34px 'Segoe UI', Arial, sans-serif; }
+      .subtitle { fill: #a9c4df; font: 18px 'Segoe UI', Arial, sans-serif; }
+      .panel-title { fill: #f8fafc; font: 700 23px 'Segoe UI', Arial, sans-serif; }
+      .panel-subtitle { fill: #a9c4df; font: 16px 'Segoe UI', Arial, sans-serif; }
+      .label { fill: #f8fafc; font: 700 18px 'Segoe UI', Arial, sans-serif; }
+      .detail { fill: #c3d3e5; font: 15px 'Segoe UI', Arial, sans-serif; }
+      .small { fill: #a9c4df; font: 14px 'Segoe UI', Arial, sans-serif; }
+      .verified-text { fill: #63e6be; font: 700 17px 'Segoe UI', Arial, sans-serif; }
+      .proposed-text { fill: #c4b5fd; font: 700 17px 'Segoe UI', Arial, sans-serif; }
+      .warning { fill: #ffb86b; font: 700 16px 'Segoe UI', Arial, sans-serif; }
+      .arrow { fill: none; stroke: #63e6be; stroke-width: 3; marker-end: url(#arrow); }
+      .arrow-proposed { fill: none; stroke: #c4b5fd; stroke-width: 3; stroke-dasharray: 8 6; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="1040" rx="24"/>
+  <text class="title" x="58" y="62">CargoShield AI — TESAIoT system architecture</text>
+  <text class="subtitle" x="58" y="94">Solid green is verified software evidence. Dashed purple is a board-dependent target, not a deployed capability.</text>
+
+  <rect class="panel verified" x="48" y="132" width="724" height="726" rx="22"/>
+  <text class="panel-title" x="82" y="178">CURRENT — verified software prototype</text>
+  <text class="panel-subtitle" x="82" y="206">All input is DATASET or SIMULATED; the safety path does not wait for storage.</text>
+
+  <rect class="box" x="84" y="244" width="270" height="104" rx="14"/>
+  <text class="label" x="106" y="282">Recorded IMU windows</text>
+  <text class="detail" x="106" y="310">validation split only</text>
+  <text class="detail" x="106" y="332">DATASET / SIMULATED</text>
+
+  <rect class="box" x="84" y="414" width="270" height="116" rx="14"/>
+  <text class="label" x="106" y="452">Python Surface AI</text>
+  <text class="detail" x="106" y="480">confidence gate +</text>
+  <text class="detail" x="106" y="504">vibration-risk estimate</text>
+
+  <rect class="box" x="84" y="598" width="270" height="126" rx="14"/>
+  <text class="label" x="106" y="636">Cargo-Aware Safety Core</text>
+  <text class="detail" x="106" y="664">deterministic MOVE / SLOW /</text>
+  <text class="detail" x="106" y="688">HOLD / SAFE STOP decisions</text>
+
+  <rect class="box" x="448" y="414" width="276" height="116" rx="14"/>
+  <text class="label" x="470" y="452">Route Risk Memory</text>
+  <text class="detail" x="470" y="480">next-mission planning only</text>
+  <text class="small" x="470" y="504">never changes a live route</text>
+
+  <rect class="box" x="448" y="598" width="276" height="126" rx="14"/>
+  <text class="label" x="470" y="636">Local MQTT state</text>
+  <text class="detail" x="470" y="664">mission, fleet, event topics</text>
+  <text class="small" x="470" y="688">loopback development broker</text>
+
+  <rect class="box" x="84" y="770" width="270" height="58" rx="14"/>
+  <text class="label" x="106" y="806">Three.js mission console</text>
+
+  <rect class="box" x="448" y="770" width="276" height="58" rx="14"/>
+  <text class="label" x="470" y="806">Fleet Guardian + PostgreSQL</text>
+
+  <path class="arrow" d="M219 348 L219 414"/>
+  <path class="arrow" d="M219 530 L219 598"/>
+  <path class="arrow" d="M354 472 L448 472"/>
+  <path class="arrow" d="M354 661 L448 661"/>
+  <path class="arrow" d="M219 724 L219 770"/>
+  <path class="arrow" d="M586 724 L586 770"/>
+
+  <rect class="panel proposed" x="828" y="132" width="724" height="726" rx="22"/>
+  <text class="panel-title" x="862" y="178">PROPOSED — requires board verification</text>
+  <text class="panel-subtitle" x="862" y="206">Design target for the TESAIoT competition; do not claim it as working before evidence exists.</text>
+
+  <rect class="box-proposed" x="864" y="244" width="292" height="132" rx="14"/>
+  <text class="label" x="886" y="282">PSoC Edge E84 AI Kit</text>
+  <text class="detail" x="886" y="310">on-board candidates: BMI270</text>
+  <text class="detail" x="886" y="332">accel/gyro, mag, temp/humidity, pressure</text>
+  <text class="warning" x="886" y="356">requires calibration + wiring proof</text>
+
+  <rect class="box-proposed" x="864" y="442" width="292" height="116" rx="14"/>
+  <text class="label" x="886" y="480">Calibrated Edge AI</text>
+  <text class="detail" x="886" y="508">verified unit / axis / cadence</text>
+  <text class="detail" x="886" y="532">before live inference is enabled</text>
+
+  <rect class="box-proposed" x="864" y="624" width="292" height="126" rx="14"/>
+  <text class="label" x="886" y="662">Secure MQTT transport</text>
+  <text class="detail" x="886" y="690">TESAIoT MQTT + device identity</text>
+  <text class="detail" x="886" y="714">TLS/mTLS after credential proof</text>
+
+  <rect class="box-proposed" x="1218" y="442" width="290" height="116" rx="14"/>
+  <text class="label" x="1240" y="480">TESAIoT Platform</text>
+  <text class="detail" x="1240" y="508">device management + cloud</text>
+  <text class="detail" x="1240" y="532">telemetry / command boundary</text>
+
+  <rect class="box-proposed" x="1218" y="624" width="290" height="126" rx="14"/>
+  <text class="label" x="1240" y="662">Sensor Studio viewer</text>
+  <text class="detail" x="1240" y="690">state/telemetry evidence only</text>
+  <text class="small" x="1240" y="714">not a claimed physical Digital Twin</text>
+
+  <rect class="box-proposed" x="1218" y="244" width="290" height="132" rx="14"/>
+  <text class="label" x="1240" y="282">Secure Edge target</text>
+  <text class="detail" x="1240" y="310">verify root of trust, mTLS,</text>
+  <text class="detail" x="1240" y="332">secure boot, protected update</text>
+  <text class="warning" x="1240" y="356">not deployed in this repository</text>
+
+  <path class="arrow-proposed" d="M1010 376 L1010 442"/>
+  <path class="arrow-proposed" d="M1010 558 L1010 624"/>
+  <path class="arrow-proposed" d="M1156 500 L1218 500"/>
+  <path class="arrow-proposed" d="M1363 558 L1363 624"/>
+  <path class="arrow-proposed" d="M1156 310 L1218 310"/>
+
+  <rect x="48" y="900" width="1504" height="92" rx="18" fill="#0e1b2c" stroke="#27415e" stroke-width="1.5"/>
+  <text class="verified-text" x="82" y="938">VERIFIED NOW</text>
+  <text class="detail" x="82" y="966">Dataset Replay, Python safety decisions, local MQTT, web consoles, fleet historian and PostgreSQL history.</text>
+  <text class="proposed-text" x="860" y="938">BOARD MILESTONE</text>
+  <text class="detail" x="860" y="966">Board data, Sensor Studio evidence, device credentials, mTLS and secure boot must be measured and verified first.</text>
+</svg>

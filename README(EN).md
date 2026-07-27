@@ -26,8 +26,8 @@ input is uncertain or unsafe.
 > [!NOTE]
 > This is a **concept render** showing the intended appearance of the delivery robot, sensing
 > assembly, and cargo box—not evidence of completed hardware. The repository remains a software
-> prototype. The end-to-end path from IMU input through the Safety Core, Route Risk Memory, and
-> Fleet Guardian is shown in [How it works](#how-it-works).
+> prototype. The architecture separates verified software from board-dependent work in
+> [TESAIoT system architecture](#tesaiot-system-architecture).
 
 ## Program overview video (2 minutes)
 
@@ -53,18 +53,16 @@ Cargo protection introduces risks that ordinary navigation does not see:
 CargoShield AI does not replace navigation. It acts as a **Cargo Protection Layer** between sensor
 data and motion commands.
 
-## How it works
+## TESAIoT system architecture
 
-```text
-IMU window (DATASET / future: live sensor)
-  → Surface AI (class + confidence)
-  → Vibration Risk (cargo exposure)
-  → Cargo-Aware Safety Core (deterministic policy)
-      ├─ MOVE / SLOW_DOWN / HOLD_UNCERTAIN / SAFE_STOP
-      └─ Fleet Guardian (Historian + Fleet Intelligence; never waits for storage)
+![CargoShield AI architecture separating the verified software prototype from the PSoC Edge E84 board plan that still requires verification](docs/assets/tesaiot-system-architecture.svg)
 
-Vibration Risk → Route Risk Memory → next-mission planning
-```
+| TESAIoT criterion | Claim supported by this repository |
+| --- | --- |
+| PSoC Edge E84 and board sensors | **PROPOSED** — collect real data and verify units, axes, cadence, and calibration before enabling live inference. |
+| Edge AI | **CURRENT** — Python baseline over Dataset Replay; **PROPOSED** for board deployment. |
+| MQTT / cloud / Sensor Studio | **CURRENT** — local MQTT and web consoles; **PROPOSED** for device credentials, TESAIoT cloud, and Sensor Studio evidence. |
+| Secure Edge | **PROPOSED** — verify the root of trust, mTLS, secure boot, and protected update on a board before claiming deployment. |
 
 The decision path is:
 
@@ -252,8 +250,8 @@ removed mid-run to prove that the Safety Core keeps deciding. Evidence is writte
 .\.venv\Scripts\python.exe -m pip_audit -r requirements.txt
 ```
 
-Revalidation on commit `6a9153d` passed **177 tests + 174 subtests**, `compileall`, and
-`pip-audit` with no known vulnerabilities. The latest checked-in end-to-end evidence records
+The latest revalidation passed **154 tests, 32 skipped, and 103 subtests**; `compileall` also
+passed. The latest checked-in end-to-end evidence records
 MQTT E2E **14/14**, Fleet Scenario **12/12**, and browser verification with no console errors.
 Every latency number is from the local simulator, not board performance.
 
