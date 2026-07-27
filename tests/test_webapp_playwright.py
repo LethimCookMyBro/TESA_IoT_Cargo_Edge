@@ -435,9 +435,9 @@ class FleetPlaywrightTests(unittest.TestCase):
         self.page.goto(f"{self.base}/index.html?device=sidebar-layout-test",
                        wait_until="domcontentloaded")
         gap = self.page.evaluate("""() => {
-          const tech = document.querySelector('aside details.tech').getBoundingClientRect();
+          const stage = document.querySelector('.stage').getBoundingClientRect();
           const deck = document.querySelector('.deck').getBoundingClientRect();
-          return deck.top - tech.bottom;
+          return deck.top - stage.bottom;
         }""")
         self.assertLessEqual(gap, 16, gap)
 
