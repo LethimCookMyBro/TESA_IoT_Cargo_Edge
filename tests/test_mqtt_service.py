@@ -289,6 +289,19 @@ class DemoReplaySequenceTests(unittest.TestCase):
         service.handle_command({"action": "manual_resume"})
         self.assertFalse(service.controller.latched_stop)
 
+    def test_start_explains_that_a_latched_stop_requires_manual_resume(self):
+        client = FakeClient()
+        root = Path(__file__).resolve().parents[1]
+        service = CargoMqttService(root, client=client, interval_s=0)
+        service.controller.latched_stop = True
+        service.controller.status = "SAFE_STOPPED"
+
+        service.handle_command({"action": "start"})
+
+        self.assertEqual(service.controller.status, "SAFE_STOPPED")
+        self.assertIsNone(service._replay)
+        self.assertEqual(client.published[-1][1]["error"], "manual resume required before starting dataset replay")
+
     def test_safe_stop_raised_inside_the_replay_ends_that_run_for_good(self):
         client = FakeClient()
         root = Path(__file__).resolve().parents[1]

@@ -136,6 +136,20 @@ function setApiStatus(ok, message) {
 /* ---------------- live fleet status over MQTT ---------------- */
 
 let knownRobots = [];
+let liveRosterSeen = false;
+
+function setKnownRobots(ids) {
+  ids = [...new Set(ids.filter((id) => typeof id === 'string' && id))].sort();
+  if (ids.join('|') === knownRobots.join('|')) return;
+  knownRobots = ids;
+  for (const id of ['series-robot', 'copilot-robot']) {
+    const select = $(id);
+    const previous = select.value;
+    select.replaceChildren(...ids.map((robotId) => new Option(robotId, robotId)));
+    if (ids.includes(previous)) select.value = previous;
+  }
+  refreshSeries();
+}
 
 function renderFleetStatus(status) {
   const counts = status?.counts ?? {};
@@ -173,19 +187,8 @@ function renderFleetStatus(status) {
   });
   replaceRows($('robot-rows'), rows, 'ยังไม่ได้รับข้อมูลจากกองหุ่นยนต์', 7);
 
-  const ids = robots.map(([robotId]) => robotId);
-  if (ids.join('|') !== knownRobots.join('|')) {
-    knownRobots = ids;
-    // Both selectors are filled from the same live roster, so neither can offer a robot the fleet
-    // has never reported.
-    for (const id of ['series-robot', 'copilot-robot']) {
-      const select = $(id);
-      const previous = select.value;
-      select.replaceChildren(...ids.map((robotId) => new Option(robotId, robotId)));
-      if (ids.includes(previous)) select.value = previous;
-    }
-    refreshSeries();
-  }
+  liveRosterSeen = true;
+  setKnownRobots(robots.map(([robotId]) => robotId));
 }
 
 /* ---------------- Maintenance Assistant (read-only, deterministic) ---------------- */
@@ -503,12 +506,17 @@ async function refreshHistory() {
   }
 
   try {
-    const [zones, findings, quality, exports] = await Promise.all([
+    const [fleet, zones, findings, quality, exports] = await Promise.all([
+      api('/api/fleet'),
       api('/api/zones'),
       api('/api/maintenance?unresolved=0&limit=' + DETAIL_ROWS),
       api('/api/data-quality'), api('/api/exports?limit=1'),
       loadEvents(), loadMissions(),
     ]);
+
+    // With MQTT offline, history still has the registered robot IDs required by its read-only tools.
+    // A retained live fleet status takes precedence as soon as it arrives.
+    if (!liveRosterSeen) setKnownRobots((fleet.robots ?? []).map((robot) => robot?.robot_id));
 
     replaceRows($('zone-rows'), (zones.zones ?? []).map((zone) => {
       const row = document.createElement('tr');

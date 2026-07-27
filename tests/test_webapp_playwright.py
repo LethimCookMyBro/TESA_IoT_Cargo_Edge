@@ -57,6 +57,11 @@ MISSIONS = [{
     "provenance": "SIMULATED",
 } for index in range(45)]
 
+FLEET_ROBOTS = [
+    {"robot_id": "robot-alpha"},
+    {"robot_id": "robot-bravo"},
+]
+
 EVENT_COLUMNS = (
     "event_id", "robot_id", "mission_id", "severity", "code", "kind", "observed_at",
     "received_at", "provenance", "zone", "status", "health_state", "action", "speed_ratio",
@@ -134,6 +139,8 @@ class FleetPlaywrightTests(unittest.TestCase):
             return
         if path == "/api/health":
             payload = {"reachable": True, "database": "readonly@test", "reason": "ready"}
+        elif path == "/api/fleet":
+            payload = {"robots": FLEET_ROBOTS}
         elif path == "/api/events":
             severity = query.get("severity", [None])[0]
             rows = [row for row in EVENTS if not severity or row["severity"] == severity]
@@ -254,6 +261,13 @@ class FleetPlaywrightTests(unittest.TestCase):
         severities = self.page.locator("#event-rows tr td:nth-child(3)").all_inner_texts()
         self.assertTrue(severities and set(severities) == {"warning"})
         self.assertIn("หน้า 1", self.page.locator("#mission-page").inner_text())
+        self.assertEqual(self.console_errors, [])
+
+    def test_history_roster_fills_robot_selectors_without_mqtt(self):
+        self.open_fleet()
+        expected = [robot["robot_id"] for robot in FLEET_ROBOTS]
+        self.assertEqual(self.page.locator("#series-robot option").all_text_contents(), expected)
+        self.assertEqual(self.page.locator("#copilot-robot option").all_text_contents(), expected)
         self.assertEqual(self.console_errors, [])
 
     def test_csv_download_uses_active_filter_and_exports_beyond_visible_page(self):
@@ -415,6 +429,17 @@ class FleetPlaywrightTests(unittest.TestCase):
           );
         }""")
         self.assertLessEqual(overlap, 0)
+
+    def test_sidebar_cards_follow_controls_without_a_large_gap_at_high_zoom(self):
+        self.page.set_viewport_size({"width": 2560, "height": 1440})
+        self.page.goto(f"{self.base}/index.html?device=sidebar-layout-test",
+                       wait_until="domcontentloaded")
+        gap = self.page.evaluate("""() => {
+          const tech = document.querySelector('aside details.tech').getBoundingClientRect();
+          const deck = document.querySelector('.deck').getBoundingClientRect();
+          return deck.top - tech.bottom;
+        }""")
+        self.assertLessEqual(gap, 16, gap)
 
 
 if __name__ == "__main__":

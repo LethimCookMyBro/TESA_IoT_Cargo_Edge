@@ -179,7 +179,7 @@ h1, h2, h3 { margin: 0; }
   grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
   /* The deck row is clamped, never `auto`: its lists grow without bound (the timeline holds up to
      60 entries), and an auto row let them push the stage and the control column off the screen. */
-  grid-template-rows: minmax(0, 1fr) clamp(148px, 23vh, 228px);
+  grid-template-rows: max-content clamp(148px, 23vh, 228px);
   gap: 14px;
   padding: 14px 22px 18px;
 }
@@ -188,6 +188,8 @@ h1, h2, h3 { margin: 0; }
   grid-column: 1;
   grid-row: 1;
   position: relative;
+  align-self: start;
+  height: clamp(380px, calc(100dvh - 150px), 900px);
   min-height: 380px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -587,7 +589,7 @@ progress::-webkit-progress-value { background: var(--accent); border-radius: 999
 /* Short viewports (1280x720 and laptops with browser chrome): cap the deck so the stage keeps
    the majority of the height instead of being squeezed by three equal rows. */
 @media (max-height: 900px) {
-  .layout { grid-template-rows: minmax(0, 1fr) clamp(132px, 21vh, 176px); }
+  .layout { grid-template-rows: max-content clamp(132px, 21vh, 176px); }
   .protection { padding: 12px 14px; }
   .protection-state { margin: 8px 0 10px; padding: 10px 12px; }
 }
@@ -596,7 +598,7 @@ progress::-webkit-progress-value { background: var(--accent); border-radius: 999
 @media (max-width: 1080px) {
   body { height: auto; min-height: 100dvh; overflow-x: hidden; overflow-y: auto; }
   .layout { grid-template-columns: 1fr; grid-template-rows: none; }
-  .stage { grid-column: 1; grid-row: auto; min-height: 56vh; }
+  .stage { grid-column: 1; grid-row: auto; height: 56vh; min-height: 56vh; }
   .side { grid-column: 1; grid-row: auto; overflow: visible; }
   .deck { grid-column: 1; grid-row: auto; grid-template-columns: 1fr; }
 }
@@ -606,7 +608,7 @@ progress::-webkit-progress-value { background: var(--accent); border-radius: 999
   .layout { padding: 12px 14px 20px; }
   .vitals { grid-template-columns: 1fr; }
   .vital .eyebrow { min-height: 0; }
-  .stage { min-height: 46vh; }
+  .stage { height: 46vh; min-height: 46vh; }
   .legend { position: static; margin: 0; border-radius: 0; border-width: 1px 0 0; }
   .stage-note { position: static; max-width: none; border-radius: 0; border-width: 0 0 1px; }
 }

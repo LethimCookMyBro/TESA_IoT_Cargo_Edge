@@ -129,6 +129,8 @@ class CargoMqttService:
             self.publish_state(error=str(exc))
 
     def start_dataset_demo(self) -> None:
+        if self.controller.latched_stop:
+            raise ValueError("manual resume required before starting dataset replay")
         previous = self._replay
         if previous is not None and previous.is_alive():
             # A run publishes its terminal state before its thread is scheduled to exit. An operator
