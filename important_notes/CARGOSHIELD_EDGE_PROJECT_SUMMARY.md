@@ -452,6 +452,56 @@ visual-flow/cargoshield-edge.trn-flow-preset.json
 - Live AI จาก BMI270 ยังไม่เปิดใช้
 - ยังไม่ได้ยืนยันแกน หน่วย Sampling Rate Timestamp และ Window ให้ตรงกับ Dataset
 - Secure Edge เช่น mTLS, Device Identity, OPTIGA Trust M, Secure Boot และ Protected Update ยังเป็นแผนต่อยอด
+  — **มีเอกสารออกแบบแล้ว** ที่ [`docs/CARGOSHIELD_SECURE_EDGE_DESIGN.md`](../docs/CARGOSHIELD_SECURE_EDGE_DESIGN.md)
+  แต่ยังไม่ได้ติดตั้งหรือทดสอบกับบอร์ดจริง
+
+---
+
+## Secure Edge Design (เอกสารออกแบบ ยังไม่ได้ deploy)
+
+เอกสาร [`docs/CARGOSHIELD_SECURE_EDGE_DESIGN.md`](../docs/CARGOSHIELD_SECURE_EDGE_DESIGN.md)
+ครอบคลุมเกณฑ์ 2.3 โดยแยกสถานะ **CURRENT / PROPOSED** ทุกหัวข้อ:
+
+- **Assets และ Threat Model** — 8 assets, 10 ภัยคุกคามตาม STRIDE พร้อมระบุว่าอันไหนยังไม่มีการป้องกัน
+- **Trust boundary** 5 เส้น (key↔MCU, บัส MCU↔OPTIGA, บอร์ด↔broker, broker↔backend,
+  Safety Core↔Historian/API/Copilot) โดยมีเพียงเส้นสุดท้ายที่บังคับใช้จริงแล้วในโค้ดวันนี้
+- **Device identity** — ECC P-256 สร้างในชิป, cert อายุ 90 วัน, key ที่ OID `0xE0F1`,
+  cert ที่ `0xE0E1` (สอง OID นี้มาจากคู่มือ TESAIoT §6 ทีมยังไม่ได้ทดสอบเอง)
+  ส่วน trust-anchor slot ยังเป็น candidate ที่ต้องยืนยัน
+- **Secure provisioning bootstrap** — CSR ต้องเดินทางในช่อง Server-TLS ที่พิสูจน์ตัวตนด้วย
+  one-time credential ก่อน แล้ว rotate/revoke credential นั้นทันทีที่ได้ device certificate
+- **การป้องกันบัส MCU ↔ OPTIGA** — Shielded Connection + Platform Binding Secret เพราะ
+  "private key non-exportable" ไม่ได้แปลว่าคำสั่งบนบัสถูกป้องกันจากการดัก แก้ หรือ replay
+- **mTLS sequence** และ ACL ต่อ topic ต่ออุปกรณ์
+- **Secure Boot chain** 5 ขั้น (รูปแบบที่ตั้งใจทำ ยังไม่ยืนยันว่าบอร์ดรองรับ)
+- **Model integrity** — ต้องตรวจ digest **ก่อน** เรียก `joblib.load()` เพราะ joblib ใช้กลไก
+  แบบ pickle โมเดลที่ถูกดัดแปลงจึงอาจนำไปสู่ arbitrary code execution ไม่ใช่แค่ prediction ผิด
+- **Protected Update** แบบ A/B slot + anti-rollback counter + watchdog rollback
+- **Failure policy** แยกสามชนิด — communication / identity / integrity พร้อมระบุว่าอุปกรณ์
+  รับรู้ revocation ผ่านช่องทางใด และถ้าออฟไลน์จะยังไม่ทราบ
+- **แผนทดสอบ E1–E16** และ **milestones M0–M10**
+
+**สถานะจริง:** ยังไม่มีบอร์ดในมือ ยังไม่เคยเรียก API ของ OPTIGA ยังไม่เคยเชื่อมต่อแพลตฟอร์ม
+และยังไม่มีเฟิร์มแวร์ของทีมบนบอร์ดใด MQTT ที่รันอยู่วันนี้เป็น plaintext บน loopback
+
+การควบคุมที่เกี่ยวข้องกับเส้นทางฐานข้อมูลและ Maintenance Copilot มีสามชั้น และต้องไม่สรุปรวมกัน:
+
+- **Historian** เป็น writer แบบ async ที่ใช้ role เขียนได้ (`cargo/historian.py:48`) จุดแข็งของมัน
+  คือคิวมีขอบเขต ทิ้งและนับแทนที่จะบล็อก Safety Core — **ไม่ใช่ SELECT-only**
+- **History API** เป็น HTTP **GET-only** (405 ทุก verb ที่เปลี่ยนข้อมูล) bind loopback
+- **Maintenance Copilot** เป็นตัวเดียวที่ใช้ **SELECT-only PostgreSQL role**
+  (`cargo/maintenance.py:65`) ร่วมกับ allowlist 7 คำถาม
+
+ส่วน command authorization: **mission command path ใน `cargo/mqtt_service.py` ไม่มี
+authentication เลย รวมทั้ง `manual_resume`** ส่วน `--command-token` เป็น optional shared
+payload token ของ `cargo/fleet_service.py` ซึ่งคุมคำสั่งคนละชุด และเป็น application-level
+command authorization ไม่ใช่ MQTT client authentication
+
+**M6 (model integrity) แบ่งสองส่วนเพราะให้การรับประกันต่างกัน:** M6a เทียบ SHA-256 กับค่าที่เก็บ
+ในเครื่อง ทำได้โดยไม่ต้องรอบอร์ด แต่ตรวจได้เพียง **accidental corruption** เท่านั้น — ผู้โจมตี
+ที่เขียนไฟล์โมเดลได้ ก็เขียนไฟล์ digest ได้ด้วย ส่วน M6b คือ digest ที่มาจาก **signed manifest
+หรือ trust anchor ที่แก้ไม่ได้** ซึ่งเป็นส่วนเดียวที่ป้องกัน malicious model replacement ได้จริง
+และขึ้นกับ Secure Boot (M7) ทั้ง M6a และ M6b **ยังไม่ implement**
 
 ---
 

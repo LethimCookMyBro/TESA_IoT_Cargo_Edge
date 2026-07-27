@@ -271,6 +271,7 @@ RFC 4180, UTF-8 BOM สำหรับ Excel และเติม apostrophe �
 | [`docs/CARGOSHIELD_ARCHITECTURE.md`](docs/CARGOSHIELD_ARCHITECTURE.md) | โครงสร้าง CargoShield และขอบเขตของแต่ละชั้น |
 | [`docs/ML_EVALUATION.md`](docs/ML_EVALUATION.md) | Data split, held-out metrics และ confidence selection |
 | [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md) | ความสามารถที่ยังไม่มีหรือยังไม่ยืนยัน |
+| [`docs/CARGOSHIELD_SECURE_EDGE_DESIGN.md`](docs/CARGOSHIELD_SECURE_EDGE_DESIGN.md) | Threat model, OPTIGA/mTLS/Secure Boot **แบบออกแบบ ยังไม่ได้ deploy** (CURRENT/PROPOSED) |
 | [`docs/HARDWARE_EXPANSION_MATRIX.md`](docs/HARDWARE_EXPANSION_MATRIX.md) | หลักฐานที่ต้องมีก่อนเพิ่มกล้อง ไมค์ ระยะ หรือมอเตอร์ |
 | [`docs/HERMES_MAINTENANCE_COPILOT.md`](docs/HERMES_MAINTENANCE_COPILOT.md) | ขอบเขต Copilot แบบอ่านอย่างเดียว |
 | [`docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md`](docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md) | MQTT, Bitstream Sensor Studio และข้อจำกัดของ build |
