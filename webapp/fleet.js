@@ -671,6 +671,7 @@ if (!mqttDisabled) {
     transport: 'mqtt',
     url,
     clientId: `cargoshield-fleet-${Math.random().toString(36).slice(2, 8)}`,
+    autoConnect: false,
   });
   client.on('error', () => setLink('ผิดพลาด', 'stop'));
   client.on('disconnect', () => setLink('ตัดการเชื่อมต่อ', 'stop'));

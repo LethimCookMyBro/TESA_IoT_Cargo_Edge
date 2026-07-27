@@ -50,6 +50,11 @@ class FleetUiContractTests(unittest.TestCase):
         start = (ROOT / "deploy" / "start.sh").read_text(encoding="utf-8")
         self.assertIn("python3 -m cargo.fleet_service &", start)
 
+    def test_each_mqtt_client_has_one_explicit_connection_attempt(self):
+        operator = (ROOT / "webapp" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("autoConnect: false", JS)
+        self.assertIn("autoConnect: false", operator)
+
 
 if __name__ == "__main__":
     unittest.main()

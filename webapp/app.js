@@ -105,7 +105,7 @@ $('destination').value = 'C2';
 // Unique per page instance: MQTT brokers evict an older session that reconnects with the same client
 // id, so a second tab or a refresh would otherwise knock the first console off the broker.
 const clientId = `cargoshield-console-${deviceId}-${Math.random().toString(36).slice(2, 8)}`;
-const client = new LiveDataClient({ transport: 'mqtt', url, clientId });
+const client = new LiveDataClient({ transport: 'mqtt', url, clientId, autoConnect: false });
 
 const pending = new Set();
 const sentAt = new Map();
