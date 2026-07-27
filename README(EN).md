@@ -39,6 +39,8 @@ capabilities from proposed work.
 
 [▶ Watch the program overview on YouTube](https://youtu.be/OJv_-qu4fCI)
 
+When the local web app is running, watch it in-page at <http://127.0.0.1:8080/video.html>.
+
 ## The problem
 
 Cargo protection introduces risks that ordinary navigation does not see:
