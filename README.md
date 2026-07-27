@@ -51,17 +51,15 @@ CargoShield AI ไม่ได้แทนระบบนำทาง แต่�
 
 ## ระบบทำงานอย่างไร
 
-```mermaid
-flowchart LR
-    A["IMU window<br/>DATASET / ในอนาคต: เซนเซอร์จริง"] --> B["Surface AI<br/>จำแนกพื้นผิว + confidence"]
-    B --> C["Vibration Risk<br/>ประเมินความเสี่ยงต่อสินค้า"]
-    C --> D["Cargo-Aware Safety Core<br/>กฎ deterministic"]
-    D --> E["MOVE"]
-    D --> F["SLOW_DOWN"]
-    D --> G["HOLD_UNCERTAIN"]
-    D --> H["SAFE_STOP"]
-    C --> I["Route Risk Memory<br/>ใช้วางเส้นทางภารกิจถัดไป"]
-    D -. "ไม่รอฐานข้อมูล" .-> J["Fleet Guardian<br/>Historian + Fleet Intelligence"]
+```text
+IMU window (DATASET / ในอนาคต: เซนเซอร์จริง)
+  → Surface AI (จำแนกพื้นผิว + confidence)
+  → Vibration Risk (ประเมินความเสี่ยงต่อสินค้า)
+  → Cargo-Aware Safety Core (กฎ deterministic)
+      ├─ MOVE / SLOW_DOWN / HOLD_UNCERTAIN / SAFE_STOP
+      └─ Fleet Guardian (Historian + Fleet Intelligence; ไม่รอฐานข้อมูล)
+
+Vibration Risk → Route Risk Memory → วางเส้นทางภารกิจถัดไป
 ```
 
 ลำดับการตัดสินใจหลัก:

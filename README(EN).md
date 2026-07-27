@@ -55,17 +55,15 @@ data and motion commands.
 
 ## How it works
 
-```mermaid
-flowchart LR
-    A["IMU window<br/>DATASET / future: live sensor"] --> B["Surface AI<br/>class + confidence"]
-    B --> C["Vibration Risk<br/>cargo exposure"]
-    C --> D["Cargo-Aware Safety Core<br/>deterministic policy"]
-    D --> E["MOVE"]
-    D --> F["SLOW_DOWN"]
-    D --> G["HOLD_UNCERTAIN"]
-    D --> H["SAFE_STOP"]
-    C --> I["Route Risk Memory<br/>next-mission planning"]
-    D -. "never waits for storage" .-> J["Fleet Guardian<br/>Historian + Fleet Intelligence"]
+```text
+IMU window (DATASET / future: live sensor)
+  → Surface AI (class + confidence)
+  → Vibration Risk (cargo exposure)
+  → Cargo-Aware Safety Core (deterministic policy)
+      ├─ MOVE / SLOW_DOWN / HOLD_UNCERTAIN / SAFE_STOP
+      └─ Fleet Guardian (Historian + Fleet Intelligence; never waits for storage)
+
+Vibration Risk → Route Risk Memory → next-mission planning
 ```
 
 The decision path is:
