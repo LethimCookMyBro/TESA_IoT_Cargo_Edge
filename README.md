@@ -17,16 +17,25 @@ CargoShield AI จึงเพิ่มชั้นการปกป้อง�
 > **สถานะปัจจุบันคือ Software Prototype:** ข้อมูลที่แสดงเป็น `DATASET` หรือ `SIMULATED`
 > ไม่ใช่การวัดสดจากบอร์ดหรือหุ่นยนต์จริง และฉาก Three.js ไม่ใช่ตำแหน่งจริงหรือ SLAM
 
-## วิดีโอแนะนำ (พร้อมเสียงบรรยายภาษาไทย ~72 วินาที)
+## รูปลักษณ์เป้าหมายโดยประมาณ
 
-วิดีโอสรุปว่า CargoShield AI คืออะไรและทำงานอย่างไร พร้อมเสียงบรรยายภาษาไทย
-(สังเคราะห์ด้วยเสียง Neural TTS) ตัดต่อจากภาพหน้าจอจริงของระบบ
-(`reports/screenshots/after/`) ไล่ตามลำดับภารกิจจริง ไม่ใช่แอนิเมชันสมมติ
+![ภาพแนวคิดหุ่นยนต์ขนส่ง CargoShield Edge พร้อมชุดตรวจจับ IMU และกล่องสินค้า](docs/assets/cargoshield-edge-hardware-concept.png)
 
-[![รับชมวิดีโอแนะนำ CargoShield AI บน YouTube](https://img.youtube.com/vi/MUtI82VvHp8/maxresdefault.jpg)](https://youtu.be/MUtI82VvHp8)
+> [!NOTE]
+> ภาพนี้เป็น **Concept Render** เพื่อสื่อรูปลักษณ์เป้าหมายของหุ่นยนต์ขนส่ง ชุดตรวจจับ และกล่องสินค้า
+> ไม่ใช่ภาพฮาร์ดแวร์ต้นแบบที่สร้างเสร็จแล้ว ระบบใน repository นี้ยังเป็น Software Prototype
+> ส่วน workflow ตั้งแต่ข้อมูล IMU ไปจนถึง Safety Core, Route Risk Memory และ Fleet Guardian แสดงในหัวข้อ
+> [ระบบทำงานอย่างไร](#ระบบทำงานอย่างไร)
 
-[▶ รับชมวิดีโอบน YouTube](https://youtu.be/MUtI82VvHp8) ·
-[ดาวน์โหลดไฟล์ MP4 สำรอง](reports/media/cargoshield_overview.mp4)
+## วิดีโอแนะนำโปรแกรม (2 นาที)
+
+วิดีโอสรุปการทำงานของ CargoShield AI พร้อมเสียงบรรยายและคำบรรยายภาษาไทย
+ตัดต่อจากภาพหน้าจอที่บันทึกใหม่จากโปรแกรมบน commit `acc5931`
+โดยระบุขอบเขต `DATASET` / `SIMULATED` และแยกความสามารถปัจจุบันออกจากส่วนที่เสนอไว้
+
+[![รับชมวิดีโอแนะนำโปรแกรม CargoShield AI บน YouTube](https://img.youtube.com/vi/OJv_-qu4fCI/maxresdefault.jpg)](https://youtu.be/OJv_-qu4fCI)
+
+[▶ รับชมวิดีโอแนะนำโปรแกรมบน YouTube](https://youtu.be/OJv_-qu4fCI)
 
 ## ปัญหาที่ต้องการแก้
 

@@ -1,0 +1,25 @@
+{
+  "name": "cargoshield-intro",
+  "version": "1.0.0",
+  "description": "CargoShield AI 2-minute intro video in Remotion",
+  "scripts": {
+    "start": "remotion studio",
+    "build": "remotion render CargoShieldIntro2Min reports/media/cargoshield_program_intro_2min.mp4",
+    "still": "remotion still CargoShieldIntro2Min"
+  },
+  "dependencies": {
+    "@remotion/bundler": "^4.0.499",
+    "@remotion/captions": "^4.0.0",
+    "@remotion/cli": "^4.0.499",
+    "@remotion/fonts": "^4.0.0",
+    "@remotion/media": "^4.0.0",
+    "@remotion/transitions": "^4.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "typescript": "^5.4.0"
+  }
+}

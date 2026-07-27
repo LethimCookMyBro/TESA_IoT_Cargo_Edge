@@ -1,0 +1,74 @@
+1
+00:00:00,500 --> 00:00:05,800
+From unseen transit risks to Cargo-Aware Autonomy:
+Introducing CargoShield AI for cargo transport robots.
+
+2
+00:00:06,200 --> 00:00:12,500
+Reaching the destination does not mean
+the cargo was protected along the way.
+
+3
+00:00:12,800 --> 00:00:19,500
+Floor vibrations and varying surfaces pose high risks to fragile items.
+CargoShield AI adds a dedicated decision layer for cargo risk assessment.
+
+4
+00:00:20,200 --> 00:00:28,500
+The system feeds IMU windows into Surface AI for classification,
+passes a Confidence Gate, evaluates Vibration Risk, and executes Cargo Policy.
+
+5
+00:00:28,800 --> 00:00:37,500
+The Safety Core acts as the sole deterministic decision maker.
+The database sits safely outside the synchronous safety path.
+
+6
+00:00:38,200 --> 00:00:46,500
+In the Mission Protection Console, selecting fragile cargo
+automatically applies a cautious speed policy.
+
+7
+00:00:46,800 --> 00:00:55,500
+If the AI model lacks confidence in classification,
+the system immediately enters HOLD UNCERTAIN to avoid guessing.
+
+8
+00:00:55,800 --> 00:01:06,500
+When obstacles or hazards are detected, it triggers a latched SAFE STOP
+until manually resumed by an operator.
+
+9
+00:01:07,000 --> 00:01:14,800
+Camera viewports support Overview, Follow, and Robot POV
+for real-time mission monitoring.
+
+10
+00:01:15,200 --> 00:01:23,500
+For fleet operators, Fleet Guardian provides multi-robot status monitoring,
+Safety Event logging, and mission history tracking.
+
+11
+00:01:23,800 --> 00:01:33,500
+Featuring a deterministic, read-only Maintenance Assistant (human approval required),
+with Hermes provider not connected.
+
+12
+00:01:34,200 --> 00:01:41,500
+CargoShield is verified by 177 automated tests,
+14/14 MQTT end-to-end checks, and 12/12 fleet scenario tests.
+
+13
+00:01:41,800 --> 00:01:47,500
+On a held-out dataset, the model achieves 72.1% selective accuracy,
+prioritizing safe stops over low confidence predictions.
+
+14
+00:01:48,200 --> 00:01:55,500
+Currently, CargoShield operates as a Software Prototype using Dataset Replay.
+Live BMI270, mTLS, OPTIGA Enclave, and Secure Boot represent our proposed design.
+
+15
+00:01:56,000 --> 00:01:59,800
+CargoShield AI
+Protect the cargo. Explain every decision.

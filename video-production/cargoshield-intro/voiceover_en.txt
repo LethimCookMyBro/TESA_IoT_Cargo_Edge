@@ -1,0 +1,23 @@
+[0-6s]
+From unseen transit risks to Cargo-Aware Autonomy: introducing CargoShield AI for cargo transport robots.
+
+[6-20s]
+Reaching the destination does not mean the cargo was protected along the way. Floor vibrations and varying surfaces pose high risks to fragile items. CargoShield AI adds a dedicated decision layer specifically designed for cargo risk assessment.
+
+[20-38s]
+The system feeds IMU windows into Surface AI for classification, passes through a Confidence Gate, evaluates Vibration Risk, and executes Cargo Policy rules—all with the Safety Core acting as the sole deterministic decision maker. The database sits safely outside the synchronous safety path.
+
+[38-72s]
+In the Mission Protection Console, selecting fragile cargo automatically applies a cautious speed policy. If the AI model lacks confidence in classification, the system immediately enters HOLD UNCERTAIN to avoid guessing. When obstacles or hazards are detected, it triggers a latched SAFE STOP until manually resumed by an operator.
+
+[72-94s]
+For fleet operators, Fleet Guardian provides multi-robot status monitoring, Safety Event logging, and mission history tracking—featuring a deterministic, read-only Maintenance Assistant where human approval is required, with Hermes provider not connected.
+
+[94-108s]
+CargoShield is verified by 177 automated tests, 14 out of 14 MQTT end-to-end checks, and 12 out of 12 fleet scenario tests. On a held-out dataset, the model achieves 72.1% selective accuracy on accepted windows, prioritizing safe stops over low confidence predictions.
+
+[108-116s]
+Currently, CargoShield operates as a Software Prototype on workstations using Dataset Replay. Live BMI270 sensors, mTLS, OPTIGA Secure Enclave, and Secure Boot represent our proposed Secure Edge design.
+
+[116-120s]
+CargoShield AI — Protect the cargo. Explain every decision.

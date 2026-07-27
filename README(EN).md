@@ -19,17 +19,25 @@ input is uncertain or unsafe.
 > `SIMULATED`. Nothing in this repository is a live board measurement, real robot location, or
 > SLAM output, and the Three.js scene does not represent physical motion.
 
-## Video overview (Thai narration, ~72s)
+## Approximate target appearance
 
-A walkthrough of what CargoShield AI is and how it works, with Thai voice narration
-(synthesized neural TTS), cut from real screenshots of the running system
-(`reports/screenshots/after/`) in mission order — not a mock-up animation. On-screen
-captions stay bilingual (English + Thai).
+![Concept render of the CargoShield Edge delivery robot, sensing tower, and cargo box](docs/assets/cargoshield-edge-hardware-concept.png)
 
-[![Watch the CargoShield AI overview on YouTube](https://img.youtube.com/vi/MUtI82VvHp8/maxresdefault.jpg)](https://youtu.be/MUtI82VvHp8)
+> [!NOTE]
+> This is a **concept render** showing the intended appearance of the delivery robot, sensing
+> assembly, and cargo box—not evidence of completed hardware. The repository remains a software
+> prototype. The end-to-end path from IMU input through the Safety Core, Route Risk Memory, and
+> Fleet Guardian is shown in [How it works](#how-it-works).
 
-[▶ Watch on YouTube](https://youtu.be/MUtI82VvHp8) ·
-[download the backup MP4](reports/media/cargoshield_overview.mp4).
+## Program overview video (2 minutes)
+
+This walkthrough uses newly captured screens from the program at commit `acc5931`, with Thai
+narration and captions. It labels `DATASET` and `SIMULATED` evidence and separates current
+capabilities from proposed work.
+
+[![Watch the two-minute CargoShield AI program overview on YouTube](https://img.youtube.com/vi/OJv_-qu4fCI/maxresdefault.jpg)](https://youtu.be/OJv_-qu4fCI)
+
+[▶ Watch the program overview on YouTube](https://youtu.be/OJv_-qu4fCI)
 
 ## The problem
 

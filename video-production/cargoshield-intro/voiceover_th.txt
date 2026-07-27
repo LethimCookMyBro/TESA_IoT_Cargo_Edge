@@ -1,0 +1,23 @@
+[0-6s]
+จากการขนส่งที่มองไม่เห็นความเสี่ยง สู่ CargoShield AI ระบบปกป้องสินค้าสำหรับหุ่นยนต์ขนส่ง
+
+[6-20s]
+การที่หุ่นยนต์ไปถึงจุดหมาย ไม่ได้แปลว่าสินค้าได้รับการปกป้องระหว่างทาง แรงสั่นสะเทือนและสภาพพื้นผิวที่แตกต่าง อาจสร้างความเสียหายต่อสินค้าเปราะบาง CargoShield AI จึงเพิ่มชั้นตัดสินใจประเมินความเสี่ยงต่อสินค้าโดยเฉพาะ
+
+[20-38s]
+ระบบนำข้อมูล IMU เข้าสู่ Surface AI จำแนกพื้นผิว ผ่าน Confidence Gate ประเมิน Vibration Risk และประมวลผลด้วย Cargo Policy โดย Safety Core เป็นผู้สั่งการเด็ดขาด และฐานข้อมูลอยู่นอก synchronous safety path
+
+[38-72s]
+ใน Mission Protection Console เมื่อเลือกสินค้าเปราะบาง ระบบจะปรับนโยบายความเร็วให้ระมัดระวังยิ่งขึ้น หากโมเดล AI ไม่มั่นใจ ระบบจะเข้าสู่ HOLD UNCERTAIN หยุดรอทันทีโดยไม่เดาสุ่ม และเมื่อพบสิ่งกีดขวางหรือเหตุอันตราย ระบบจะ SAFE STOP ล็อคการทำงานอย่างปลอดภัยจนกว่าผู้ควบคุมจะสั่งรีซูม
+
+[72-94s]
+สำหรับผู้ดูแลระบบ Fleet Guardian ช่วยติดตามสถานะหุ่นยนต์หลายตัว บันทึก Safety Events และประวัติภารกิจย้อนหลัง พร้อม Maintenance Assistant แบบ deterministic อ่านอย่างเดียว ที่ช่วยวิเคราะห์ข้อมูลโดยให้มนุษย์เป็นผู้รับรอง โดย Hermes provider ยังไม่ได้เชื่อมต่อ
+
+[94-108s]
+CargoShield ผ่านการทดสอบระดับระบบด้วย Automated tests 177 รายการ MQTT E2E 14 รายการ และ Fleet scenario 12 รายการ บน held-out dataset โมเดลทำ Accuracy ของหน้าต่างที่ยอมรับได้ 72.1% โดยเน้นหยุดปลอดภัยเมื่อไม่มั่นใจ
+
+[108-116s]
+ปัจจุบัน CargoShield คือ Software Prototype บน workstation รันด้วย Dataset Replay ส่วน Live BMI270, mTLS, OPTIGA Secure Enclave และ Secure Boot คือสถาปัตยกรรม Secure Edge ที่ออกแบบไว้ล่วงหน้า
+
+[116-120s]
+CargoShield AI — Protect the cargo. Explain every decision.

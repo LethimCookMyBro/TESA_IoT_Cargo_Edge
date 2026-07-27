@@ -27,3 +27,9 @@ venv/
 .agents/
 .claude/
 skills-lock.json
+
+# Local Remotion dependencies and generated video artifacts
+node_modules/
+video-production/**/preview_*.png
+video-production/**/public/assets/current-capture/videos/
+reports/media/cargoshield_program_intro_2min.mp4
