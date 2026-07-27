@@ -13,7 +13,13 @@ import {
 
 const params = new URLSearchParams(location.search);
 const deviceId = params.get('device') ?? 'cargo-robot-01';
-const url = params.get('url') ?? DEFAULT_MQTT_WS_URL;   // ws://127.0.0.1:8883
+// Local dev keeps the SDK default (ws://127.0.0.1:8883); a deployed host talks to the
+// MQTT-over-websocket listener nginx proxies at /mqtt (see deploy/nginx.conf.template).
+const isLocalHost = ['localhost', '127.0.0.1'].includes(location.hostname);
+const defaultUrl = isLocalHost
+  ? DEFAULT_MQTT_WS_URL
+  : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/mqtt`;
+const url = params.get('url') ?? defaultUrl;
 const topic = topics(deviceId);
 
 const $ = (id) => document.getElementById(id);
