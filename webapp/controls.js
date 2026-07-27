@@ -161,7 +161,7 @@ export const PROTECTION_STATES = {
   SAFE_STOPPED: { key: 'SAFE_STOP',   label: 'หยุดปลอดภัย',             english: 'SAFE STOP',              tone: 'stop',      glyph: 'stop' },
   PAUSED:       { key: 'PAUSED',      label: 'ผู้ควบคุมหยุดชั่วคราว',  english: 'PAUSED BY OPERATOR',     tone: 'hold',      glyph: 'pause' },
   READY:        { key: 'MONITORING',  label: 'เฝ้าระวัง · พร้อมออกเดินทาง', english: 'MONITORING',         tone: 'idle',      glyph: 'watch' },
-  COMPLETED:    { key: 'DELIVERED',   label: 'ส่งถึงปลายทางแล้ว',       english: 'DELIVERED',              tone: 'go',        glyph: 'check' },
+  COMPLETED:    { key: 'REPLAY_COMPLETE', label: 'Dataset Replay ถึงจุดหมายจำลองแล้ว', english: 'DATASET REPLAY COMPLETE', tone: 'go', glyph: 'check' },
   IDLE:         { key: 'STANDBY',     label: 'รอคำสั่งภารกิจ',          english: 'STANDBY',                tone: 'idle',      glyph: 'watch' },
   ERROR:        { key: 'ERROR',       label: 'ระบบรายงานข้อผิดพลาด',   english: 'ERROR',                  tone: 'stop',      glyph: 'stop' },
 };

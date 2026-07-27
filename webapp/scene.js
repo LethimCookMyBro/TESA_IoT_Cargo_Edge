@@ -526,8 +526,8 @@ export function createScene(canvas, { reducedMotion = false } = {}) {
       moved = Math.min(Math.abs(delta), step) * Math.sign(delta);
       visual.fraction += moved;
       applyRoute(target.nodes, visual.fraction);
-    } else if (!target.animate && target.nodes.length && Math.abs(target.fraction - visual.fraction) > 0.5) {
-      // A finished or reset run snaps rather than pretending to drive there.
+    } else if (!target.animate && target.nodes.length && visual.fraction !== target.fraction) {
+      // A finished or paused state snaps to its last published position; no motion is invented.
       visual.fraction = target.fraction;
       applyRoute(target.nodes, visual.fraction);
     }

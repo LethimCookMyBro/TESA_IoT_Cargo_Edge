@@ -166,6 +166,19 @@ class WebappVisualContractTests(unittest.TestCase):
         self.assertEqual(by_status["SLOWING"]["tone"], "hold")
         self.assertEqual(by_status["MOVING"]["tone"], "go")
 
+    def test_completed_dataset_replay_does_not_claim_a_physical_delivery(self):
+        completed = dict(self.contract["protection"])["COMPLETED"]
+        self.assertEqual(completed["key"], "REPLAY_COMPLETE")
+        self.assertIn("REPLAY", completed["english"])
+
+    def test_non_moving_state_snaps_to_the_last_published_route_position(self):
+        scene = (WEBAPP / "scene.js").read_text(encoding="utf-8")
+        self.assertIn(
+            "if (!target.animate && target.nodes.length && visual.fraction !== target.fraction)",
+            scene,
+        )
+        self.assertNotIn("Math.abs(target.fraction - visual.fraction) > 0.5", scene)
+
     def test_an_unknown_or_absent_status_stays_honestly_unknown(self):
         for case in ("protection_unknown", "protection_absent"):
             with self.subTest(case=case):
