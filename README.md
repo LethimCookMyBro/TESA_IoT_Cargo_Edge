@@ -259,6 +259,8 @@ RFC 4180, UTF-8 BOM สำหรับ Excel และเติม apostrophe �
 - ฉาก Three.js เป็น visualization ไม่ใช่ Digital Twin ที่ผูกกับตำแหน่งจริง
 - Maintenance Copilot/Hermes ยังไม่เชื่อมใช้งานจริง และจะต้องคงสิทธิ์แบบ read-only
 - ผล ML ปัจจุบันเป็น baseline และบางคลาสยังจำแนกได้ไม่ดี
+- Secure Edge มีเอกสารออกแบบที่แยก CURRENT/PROPOSED แล้ว แต่ยังไม่มี OPTIGA, mTLS,
+  Secure Boot หรือ Protected Update ที่ deploy และพิสูจน์บนบอร์ดจริง
 
 ดูรายการข้อจำกัดฉบับเต็มที่ [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md)
 

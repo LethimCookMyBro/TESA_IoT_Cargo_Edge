@@ -18,6 +18,13 @@
   The 0.75 target was not reachable; `models/confidence_policy.json` records that honestly rather than hiding it.
 - No board pinout or connector evidence exists in this repository, so no expansion module is authorised.
   See `docs/HARDWARE_EXPANSION_MATRIX.md`.
+- Secure Edge is design-only. No OPTIGA API call, device certificate provisioning, mTLS,
+  Secure Boot, protected update, or anti-rollback flow has been deployed or proven on hardware.
+- The actual competition-board root of trust is unverified: the TESAIoT guide names OPTIGA Trust M,
+  while the Infineon product page, user guide, and Zephyr board page do not list a discrete OPTIGA.
+  Milestone M1 in `docs/CARGOSHIELD_SECURE_EDGE_DESIGN.md` must resolve this before implementation.
+- The model artifact is loaded without cryptographic authenticity verification. Local SHA-256
+  checking and signed-manifest verification are both planned but not implemented.
 - The Maintenance Assistant is deterministic SQL, not a language model. No copilot provider is
   configured: `/api/copilot` reports `provider: null` and the panel shows
   "Hermes provider: Not connected". A `hermes-agent` CLI happens to be installed on the development

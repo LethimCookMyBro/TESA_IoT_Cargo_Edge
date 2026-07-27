@@ -198,7 +198,7 @@ An MQTT broker must listen on `127.0.0.1:1883`, with MQTT-over-WebSocket on
 # Python Engine for the Dataset Replay mission
 .\.venv\Scripts\python.exe -m cargo.mqtt_service
 
-# Fleet Guardian and read-only History API
+# Fleet Guardian and GET-only History API
 .\.venv\Scripts\python.exe -m cargo.fleet_service
 .\.venv\Scripts\python.exe -m cargo.history_api --port 8099
 
@@ -268,6 +268,8 @@ RFC 4180 escaping, an Excel-compatible UTF-8 BOM, and apostrophe-prefix cells be
 - The Three.js scene is a visualization, not a Digital Twin bound to physical position.
 - Maintenance Copilot/Hermes is not integrated and must remain read-only if added.
 - The current ML model is a baseline and some classes remain weak.
+- Secure Edge now has a CURRENT/PROPOSED design, but OPTIGA, mTLS, Secure Boot, and Protected
+  Update have not been deployed or proven on hardware.
 
 See [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md) for the complete list.
 
@@ -280,6 +282,7 @@ See [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md) for the complete li
 | [`docs/CARGOSHIELD_ARCHITECTURE.md`](docs/CARGOSHIELD_ARCHITECTURE.md) | CargoShield structure and layer boundaries |
 | [`docs/ML_EVALUATION.md`](docs/ML_EVALUATION.md) | Data splits, held-out metrics, and confidence selection |
 | [`docs/KNOWN_LIMITATIONS.md`](docs/KNOWN_LIMITATIONS.md) | Unimplemented and unverified capabilities |
+| [`docs/CARGOSHIELD_SECURE_EDGE_DESIGN.md`](docs/CARGOSHIELD_SECURE_EDGE_DESIGN.md) | CURRENT/PROPOSED threat model, mTLS, Secure Boot, and protected-update design |
 | [`docs/HARDWARE_EXPANSION_MATRIX.md`](docs/HARDWARE_EXPANSION_MATRIX.md) | Evidence required before camera, microphone, range, or motor expansion |
 | [`docs/HERMES_MAINTENANCE_COPILOT.md`](docs/HERMES_MAINTENANCE_COPILOT.md) | Read-only copilot boundary |
 | [`docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md`](docs/CARGOSHIELD_VISUAL_FLOW_RUNBOOK.md) | MQTT, Bitstream Sensor Studio, and build limits |

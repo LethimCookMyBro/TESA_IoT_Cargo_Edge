@@ -53,9 +53,9 @@ CargoShield services
   ├─ MQTT retained state ──► Three.js Dataset Replay console
   │                       └─► optional Sensor Studio state viewer
   ├─ MQTT fleet state/events
-  └─ bounded historian queue ──► PostgreSQL ──► read-only History API
+  └─ bounded historian queue ──► PostgreSQL ──► GET-only History API
                                                 └─► Fleet Intelligence
-                                                └─► read-only MaintenanceContext
+                                                └─► SELECT-only MaintenanceContext
 ```
 
 - `cargo.mqtt_service` runs the single-robot validation-window replay.
@@ -63,8 +63,9 @@ CargoShield services
 - `cargo.historian` drops and counts overflow rather than blocking a safety decision.
 - Browsers never connect directly to PostgreSQL.
 - `cargo.maintenance` has no MQTT publisher or database write path.
-- `cargo.history_api` serves the copilot's curated questions over GET at `/api/copilot/{question}`,
-  reading through the SELECT-only role. The question set is an allowlist
+- `cargo.history_api` exposes only GET endpoints, but its general history queries use the owner
+  database role. The Maintenance Copilot alone reads through `MaintenanceContext` with the
+  SELECT-only role. Its question set is an allowlist
   (`history_api.COPILOT_QUESTIONS`); a question outside it has no endpoint at all.
 - `/api/events` and `/api/missions` are stable, read-only, independently paginated views with a
   hard maximum of 20 rows per page. Their CSV siblings (`/api/events.csv`,
@@ -98,4 +99,6 @@ Dataset Replay feeds real stored CareerCon validation windows to the model, but 
 board measurement. Fleet telemetry, named zones, obstacle distance, and 3D movement are simulated.
 Live BMI270 inference remains disabled until units, calibration, sampling rate, timestamps, and
 128-sample compatibility are verified. The project does not claim SLAM, physical navigation,
-certified stopping distance, or board inference performance.
+certified stopping distance, or board inference performance. Secure Edge is likewise a
+source-backed target design, not a deployed capability; see
+`docs/CARGOSHIELD_SECURE_EDGE_DESIGN.md`.

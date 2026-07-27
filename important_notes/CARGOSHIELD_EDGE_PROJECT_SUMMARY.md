@@ -554,11 +554,14 @@ Sensor Studio State View : ยังสร้าง/Export ด้วยมือ
 Visual Flow Export       : ยังไม่มี ต้องคลิก Export ใน Studio
 Digital Twin บน Studio    : สร้างไม่ได้ใน build นี้ ใช้ webapp/scene.js แทน
 Live BMI270 Inference    : ยังไม่เปิด
-Secure Edge Deployment   : แผนต่อยอด
+Secure Edge Design       : ทำแล้ว (CURRENT/PROPOSED + แผนทดสอบ)
+Secure Edge Deployment   : ยังไม่ทำ / รอ milestone M1 และบอร์ดจริง
+Proposal PDF             : ยังไม่มี
 ```
 
 ## เป้าหมายถัดไป
 
-เป้าหมายหลักถัดไปคือรับเอกสาร pinout/connector ของบอร์ดและเก็บหน้าต่าง BMI270 จริงให้ตรงกับ
-schema ของโมเดล ก่อนเปิด Live Inference หรือต่อ range sensor และ motor ส่วน Sensor Studio
-state viewer สามารถสร้างและ Export เพิ่มภายหลังได้ แต่ build นี้ส่งคำสั่งและทำ 3D บน canvas ไม่ได้
+เป้าหมายหลักถัดไปคือทำ proposal PDF 5 หน้า A4 แนวตั้ง โดยแมปทุก claim กับหลักฐานและแยก
+CURRENT/PROPOSED ให้ชัด หลังส่ง proposal หรือเมื่อมีบอร์ดจริง ค่อยทำ Secure Edge milestone M1
+เพื่อยืนยัน root of trust/pinout/boot/update constraints และเก็บหน้าต่าง BMI270 จริงให้ตรงกับ
+schema ของโมเดลก่อนเปิด Live Inference ส่วน Sensor Studio state viewer เป็นงานเสริมภายหลัง

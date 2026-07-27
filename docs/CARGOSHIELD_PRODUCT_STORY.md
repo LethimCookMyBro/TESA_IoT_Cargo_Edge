@@ -132,6 +132,19 @@
 เส้นทางเชื่อมต่อเตรียมไว้แล้ว: ตัวอย่างจากบอร์ดจะเข้าทาง fleet telemetry contract
 (`cargo/contracts.py`) และถูกตรวจโดย `cargo/health.py` ด้วย provenance `HARDWARE`
 
+### 9.1 Secure Edge
+
+**สถานะปัจจุบัน:** MQTT เป็น plaintext บน loopback ไม่มี device identity, mTLS, Secure Boot
+หรือ protected update ที่ deploy แล้ว
+
+**แบบออกแบบ:** ใช้ hardware root of trust สำหรับ key/certificate, bootstrap server TLS ก่อน
+provisioning, mTLS + broker ACL, Secure Boot และ protected update พร้อม anti-rollback โดยต้องผ่าน
+milestone M1 ก่อนว่า competition board ใช้ OPTIGA Trust M แยกจริง หรือใช้ secure enclave ใน SoC
+
+**ประโยคที่ใช้ได้:** "มีแบบออกแบบ Secure Edge ที่แยกของปัจจุบันกับของเสนอไว้อย่างตรวจสอบได้"
+
+**ประโยคที่ห้ามใช้:** "OPTIGA, mTLS หรือ Secure Boot ทำงานบนบอร์ดแล้ว"
+
 ## 10. Maintenance Copilot story
 
 **ปัญหา:** เมื่อหุ่นยนต์ Safe Stop ช่างต้องไล่อ่าน log หลายที่กว่าจะรู้ว่าเกิดอะไร
@@ -220,6 +233,7 @@
 - "Safety Core ทำงานต่อได้แม้ฐานข้อมูล หน้าเว็บ หรือ Agent ล่ม"
 - "Maintenance Copilot อ่านอย่างเดียว บังคับด้วย database role"
 - "สาธิตด้วย Dataset Replay จาก validation split ที่แยกจาก train/test"
+- "Secure Edge มีแบบออกแบบ CURRENT/PROPOSED และแผนพิสูจน์ แต่ยังไม่ได้ deploy"
 
 ## 13. Claims ที่ห้ามใช้
 
@@ -233,6 +247,7 @@
 | SLAM / Localization | ไม่มีทั้งสองอย่าง |
 | Board inference performance | ยังไม่เคยวัดบนบอร์ด ตัวเลข latency เป็นของ simulator |
 | Active Hermes integration | Hermes ยังไม่ได้เชื่อมต่อ |
+| Active OPTIGA / mTLS / Secure Boot deployment | ปัจจุบันมีเฉพาะเอกสารออกแบบ ยังไม่เคยพิสูจน์บนบอร์ด |
 | ผลจาก test split เป็นผลการสาธิต | test split สงวนไว้รายงาน metrics เท่านั้น |
 
 ---
@@ -248,3 +263,4 @@
 | ผลโมเดลจาก test split | `reports/metrics.json` |
 | การเลือก confidence threshold | `models/confidence_policy.json` |
 | ข้อจำกัดที่ยอมรับ | `docs/KNOWN_LIMITATIONS.md` |
+| Secure Edge CURRENT/PROPOSED | `docs/CARGOSHIELD_SECURE_EDGE_DESIGN.md` |
