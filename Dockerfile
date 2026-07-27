@@ -10,6 +10,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY cargo ./cargo
+COPY migrations ./migrations
 COPY training ./training
 COPY webapp ./webapp
 COPY models ./models

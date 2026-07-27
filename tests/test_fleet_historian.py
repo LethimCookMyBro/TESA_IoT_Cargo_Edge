@@ -17,6 +17,7 @@ import unittest
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 from cargo import contracts, db
 from cargo.export import ExportFilters, export
@@ -91,6 +92,13 @@ def _seed(robots=("robot-alpha", "robot-bravo", "robot-charlie"), steps=6) -> Hi
 
 
 class HistoryTransportUnitTests(unittest.TestCase):
+    def test_database_url_is_used_when_railway_provides_it(self):
+        with patch.dict("os.environ", {
+            "DATABASE_URL": "postgresql://cargo%20user:p%40ss%2Fword@db.internal/cargo%20db",
+        }, clear=True):
+            settings = db.settings_from_env()
+        self.assertEqual(settings, db.Settings("db.internal", 5432, "cargo db", "cargo user", "p@ss/word"))
+
     def test_conninfo_quotes_special_characters_without_exposing_them_in_errors(self):
         from psycopg.conninfo import conninfo_to_dict
 

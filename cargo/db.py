@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "migrations"
 
@@ -40,6 +41,17 @@ class Settings:
 
 def settings_from_env(*, database: str | None = None) -> Settings:
     """Read connection settings. These are the variables `.env.example` documents."""
+    if database_url := os.environ.get("DATABASE_URL"):
+        parsed = urlparse(database_url)
+        if parsed.scheme not in {"postgres", "postgresql"} or not parsed.hostname or not parsed.username:
+            raise ValueError("DATABASE_URL must be a PostgreSQL connection URL")
+        return Settings(
+            host=parsed.hostname,
+            port=parsed.port or 5432,
+            database=database or unquote(parsed.path.lstrip("/")),
+            user=unquote(parsed.username),
+            password=unquote(parsed.password or ""),
+        )
     return Settings(
         host=os.environ.get("CARGOSHIELD_PG_HOST", "127.0.0.1"),
         port=int(os.environ.get("CARGOSHIELD_PG_PORT", "5433")),
